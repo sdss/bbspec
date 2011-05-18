@@ -1,0 +1,100 @@
+== 2D PSF Extraction Data Model ==
+2011-05-18
+
+This documents the initial data model for the 2D spectral extraction R&D.
+It will evolve, and it will be refactored for any external release of
+data products for production code.
+
+
+== Compact PSF format ==
+
+This format records the PSF parameters only as measured at the location
+of the arc lines.  Structurally it is the same as the following full PSF
+format; it just has a much more limited set of Y values.  A separate piece
+of code [to be written] will expand this compact PSF format into the full
+PSF format, including interpolation in wavelength, outlier rejection, and
+any tweaking of the X Y positions necessary to match the science frames.
+
+
+== Full PSF format ==
+
+Each HDU contains an image (nfibers x nflux) for a given PSF parameter
+evaluated for each fiber at each flux resolution bin.
+
+HDU 0 keywords:
+
+SIMPLE  =                    T / conforms to FITS standard
+BITPIX  =                  -64 / array data type
+NAXIS   =                    2 / number of array dimensions
+NAXIS1  =                   65
+NAXIS2  =                    5
+EXTEND  =                    T
+PSFTYPE = 'GAUSS2D '           / Rotated 2D Gaussian
+NPIX_X  =                   60 / number of image pixels in the X-direction
+NPIX_Y  =                   70 / number of image pixels in the Y-direction
+NSPEC   =                    5 / number of spectra [NAXIS2]
+NFLUX   =                   65 / number of flux bins per spectrum [NAXIS1]
+PSFPARAM= 'X       '           / X position as a function of flux bin
+
+PSFTYPE defines which kind of PSF is stored in this file,
+and thus how to interpret the various HDU parameters.
+
+PSFPARM defines which PSF parameter is stored in each HDU.
+Detail: this isn't EXTNAME because fits doesn't allow HDU 0 to have
+    an EXTNAME keyword.
+
+The first 3 HDUs should be the same PSFPARAMs for any PSFTYPE:
+
+HDU 0 : PSFPARAM = 'X'
+HDU 1 : PSFPARAM = 'Y'
+HDU 2 : PSFPARAM = 'LogLam'
+
+Note: HDU 1 Y values might correspond to image pixel rows, but they don't have to.
+
+Additional HDUs are specific to the PSFTYPE.  For example, the GAUSS2D
+format has additional HDUs:
+
+HDU 3 : PSFPARAM = 'Amplitude'  Gaussian amplitude (currently fixed to 1.0)
+HDU 4 : PSFPARAM = 'MajorAxis'  Gaussian sigma for the major axis
+HDU 5 : PSFPARAM = 'MinorAxis'  Gaussian sigma for the minor axis
+HDU 6 : PSFPARAM = 'Angle'  Rotation angle of MajorAxis wrt the x-axis
+
+For a given PSFTYPE, the order of the HDUs will be fixed.
+
+
+== Image ==
+
+The image to be extracted must have dimensions matching the NPIX_X and NPIX_Y keywords of the PSF file.
+
+HDU 0 : noisy image pixel data
+HDU 1 : pixel inverse variance
+HDU 2 : optional, for testing : image before any pixel noise is applied
+
+
+== Input Spectra ==
+
+For testing: input known spectra which can be convolved with a PSF and
+compared to extracted spectra.
+
+HDU 0 : (nfiber x nflux) flux values
+
+TBD: Units?  For testing, it might be convenient to specify that this is
+in photons (or ADUs?) such that this flux, directly convolved by the PSF,
+gives the pixels, with no extra conversion for ergs, wavelength, etc.
+
+
+== Extracted Spectra ==
+
+HDU 0 : (nfiber x nflux) : Extracted re-convolved spectra
+HDU 1 : (nfiber x nflux) : Inverse variance of extracted re-convolved spectra
+  --> by construction the covariance should be diagonal, but do we want/need
+      to keep the full covariance for testing?
+HDU 2 : The convolution kernel R [Format TBD]
+HDU 3 : (nfiber x nflux) : Original extracted spectra, before re-convolution
+HDU 4 : (nfiber*nflux) x (nfiber*nflux) : Inverse covariance matrix of extracted
+        spectra [A.T Ninv A]
+
+
+
+
+
