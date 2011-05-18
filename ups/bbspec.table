@@ -12,8 +12,8 @@ envPrepend(PATH, ${PRODUCT_DIR}/bin)
 # If you have perl modules installed in lib
 # envPrepend(PERL5LIB, ${PRODUCT_DIR}/lib)
 
-# If you have python modules installed in lib
-envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib)
+# If you have python modules installed
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 
 # If you have shared objects installed in lib
 # envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
