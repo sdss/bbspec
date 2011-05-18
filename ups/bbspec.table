@@ -1,0 +1,20 @@
+# ${PRODUCT_DIR} is an alias for $BBSPEC_DIR.
+# $BBSPEC_DIR will get set automatically.
+#
+# Put any desired products in by altering and uncommenting below:
+# "setupRequired()" will make the setup required.
+# setupOptional("sas v0_1")
+
+# Set paths for executables and IDL
+envPrepend(PATH, ${PRODUCT_DIR}/bin)
+# envPrepend(IDL_PATH, +${PRODUCT_DIR}/pro)
+
+# If you have perl modules installed in lib
+# envPrepend(PERL5LIB, ${PRODUCT_DIR}/lib)
+
+# If you have python modules installed in lib
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib)
+
+# If you have shared objects installed in lib
+# envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
+
