@@ -6,7 +6,7 @@ It will evolve, and it will be refactored for any external release of
 data products for production code.
 
 
-== Compact PSF format ==
+== Compact PSF format: spArcPSF-[br][12]-[FRAME].fits ==
 
 This format records the PSF parameters only as measured at the location
 of the arc lines.  Structurally it is the same as the following full PSF
@@ -16,7 +16,7 @@ PSF format, including interpolation in wavelength, outlier rejection, and
 any tweaking of the X Y positions necessary to match the science frames.
 
 
-== Full PSF format ==
+== Full PSF format: spBasisPSF-[br][12]-[FRAME].fits ==
 
 Each HDU contains an image (nfibers x nflux) for a given PSF parameter
 evaluated for each fiber at each flux resolution bin.
@@ -62,7 +62,7 @@ HDU 6 : PSFPARAM = 'Angle'  Rotation angle of MajorAxis wrt the x-axis
 For a given PSFTYPE, the order of the HDUs will be fixed.
 
 
-== Image ==
+== Image: sdProc-[br][12]-[FRAME].fits ==
 
 The image to be extracted must have dimensions matching the NPIX_X and NPIX_Y keywords of the PSF file.
 
