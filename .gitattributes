@@ -6,5 +6,4 @@ python/bbspec/__init__.py -text
 python/bbspec/spec2d/__init__.py -text
 python/bbspec/spec2d/airtovac.py -text
 python/bbspec/spec2d/boltonfuncs.py -text
-ups/Makefile -text
 ups/bbspec.table -text

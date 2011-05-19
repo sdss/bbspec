@@ -26,7 +26,7 @@ MAKEFLAGS = w
 # This list can be empty, but should still be defined.
 #
 # SUBDIRS = bin doc python ups
-SUBDIRS = ups
+SUBDIRS = 
 #
 # This line helps prevent make from getting confused in the case where you
 # have a file named 'clean'.
