@@ -2,6 +2,7 @@
 /Makefile -text
 /RELEASE_NOTES -text
 doc/datamodel.txt -text
+doc/hack.txt -text
 examples/make_gauss2d_psf.py -text
 examples/make_test_spectra.py -text
 examples/pix2spec.py -text

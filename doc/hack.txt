@@ -1,0 +1,12 @@
+This describes the hack to include the bbspec extraction code
+in the idlspec2d pipeline.  At the top-level, this is trigged
+in the pipeline with "SPREDUCE2D,/BBSPEC".
+
+SPREDUCE
+   Generate sdProc files for all of the arc frames.
+   Spawn bbspec for PSF generation from each arc frame (line 207).
+
+EXTRACT_OBJECT
+   No code changes except to call BBSPEC_EXTRACT to replace the
+   extracted fluxes and errors (line 303).
+
