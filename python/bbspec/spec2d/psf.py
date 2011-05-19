@@ -32,7 +32,7 @@ class PSFBase(object):
         self.nflux  = fx[0].header['NFLUX']
         self.param = dict()
         for i in range(len(fx)):
-            name = fx[i].header['PSFPARAM']
+            name = fx[i].header['PSFPARAM'].strip()
             self.param[name] = fx[i].data
         fx.close()
 
@@ -53,6 +53,8 @@ def load_psf(filename):
     psftype = fx[0].header['PSFTYPE']
     if psftype == 'GAUSS2D':
         return PSFGauss2D(filename)
+    elif psftype == 'GAUSS-HERMITE':
+        return PSFGaussHermite2D(filename)
     else:
         print "I don't know about PSFTYPE %s" % psftype
         raise NotImplementedError
@@ -112,3 +114,70 @@ class PSFGauss2D(PSFBase):
         nx = xslice.stop - xslice.start
         ny = yslice.stop - yslice.start
         return xslice, yslice, pix.reshape( (ny, nx) )
+
+class PSFGaussHermite2D(PSFBase):
+    """
+    Pixel-integrated probabilist-form 2D Gauss-Hermite PSF.
+    Currently hard-coded to fourth order.
+    (A. Bolton, U. of Utah, 2011may)
+    """
+    from bbspec.spec2d import pgh
+
+    def __init__(self, filename):
+        """
+        Load PSF from file.  See PSFBase doc for details.
+        """
+        super(PSFGaussHermite2D, self).__init__(filename)
+        # Initialize the list of orders
+        self.maxorder = 4
+        self.mvalues = []
+        self.nvalues = []
+        self.ordernames = []
+        for thisord in range(maxorder+1):
+            for thism in range(0, thisord+1):
+                thisn = thisord - thism
+                thisname = 'PGH(' + str(thism) + ',' + str(thisn) + ')'
+                self.mvalues.append(thism)
+                self.nvalues.append(thisn)
+                self.ordernames.append(thisname)
+
+    def pix(self, ispec, iflux):
+        """
+        Evaluate PSF for a given spectrum and flux bin
+        
+        returns xslice, yslice, pixels[yslice, xslice]
+        """
+        # Extract core parameters:
+        xcen = self.param['X'][ispec, iflux]
+        ycen = self.param['Y'][ispec, iflux]
+        sigma = self.param['sigma'][ispec, iflux]
+        # Set half-width and determine indexing variables:
+        hw = int(N.ceil(5.*sigma))
+        xcr = int(round(xcen))
+        ycr = int(round(ycen))
+        dxcen = xcen - xcr
+        dycen = ycen - ycr
+        xmin = max(xcr - hw, 0)
+        xmax = min(xcr + hw, self.npix_x - 1)
+        ymin = max(ycr - hw, 0)
+        ymax = min(ycr + hw, self.npix_y - 1)
+        xbase = N.arange(xmin - xcr, xmax - xcr + 1, dtype=float)
+        ybase = N.arange(ymin - ycr, ymax - ycr + 1, dtype=float)
+        nx, ny = len(xbase), len(ybase)
+        # Build the output slices:
+        xslice = slice(xmin, xmax+1)
+        yslice = slice(ymin, ymax+1)
+        # Build the 1D functions:
+        xfuncs = N.zeros((self.maxorder+1, nx), dtype=float)
+        yfuncs = N.zeros((self.maxorder+1, ny), dtype=float)
+        for iorder in range(self.maxorder+1):
+            xfuncs[iorder] = pgh(xbase, m=iorder, xc=dxcen, sigma=sigma)
+            yfuncs[iorder] = pgh(ybase, m=iorder, xc=dycen, sigma=sigma)
+        # Build the output image:
+        outimage = N.zeros((ny, nx), dtype=float)
+        for iorder in range(len(self.ordernames)):
+            outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
+                        N.outer(yfuncs[self.nvalues[iorder]],
+                                xfuncs[self.mvalues[iorder]])
+        # Pack up and return:
+        return xslice, yslice, outimage
