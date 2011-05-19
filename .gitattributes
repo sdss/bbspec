@@ -1,5 +1,6 @@
 * text=auto !eol
 /Makefile -text
+/RELEASE_NOTES -text
 doc/datamodel.txt -text
 python/bbspec/spec2d/__init__.py -text
 python/bbspec/spec2d/airtovac.py -text

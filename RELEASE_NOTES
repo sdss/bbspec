@@ -1,0 +1,10 @@
+2011-May-19: Adding some initial bbspec python utilities:
+(A. Bolton, U. of Utah)
+  bbspec/spec2d/airtovac:
+    airtovac
+    vactoair
+  bbspec/spec2d/boltonfuncs
+    pgh
+    sym_sqrt
+    resolution_from_icov
+    bilinear
