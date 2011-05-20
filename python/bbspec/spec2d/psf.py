@@ -6,6 +6,8 @@ Classes and functions for manipulating 2D PSFs
 
 import numpy as N
 import pyfits
+from bbspec.spec2d import pgh
+
 
 class PSFBase(object):
     """Base class for 2D PSFs"""
@@ -26,10 +28,10 @@ class PSFBase(object):
         
         fx = pyfits.open(filename)
         
-        self.npix_x = fx[0].header['NPIX_X']
-        self.npix_y = fx[0].header['NPIX_Y']
-        self.nspec  = fx[0].header['NSPEC']
-        self.nflux  = fx[0].header['NFLUX']
+        self.npix_x = int(fx[0].header['NPIX_X'])
+        self.npix_y = int(fx[0].header['NPIX_Y'])
+        self.nspec  = int(fx[0].header['NSPEC'])
+        self.nflux  = int(fx[0].header['NFLUX'])
         self.param = dict()
         for i in range(len(fx)):
             name = fx[i].header['PSFPARAM'].strip()
@@ -121,8 +123,6 @@ class PSFGaussHermite2D(PSFBase):
     Currently hard-coded to fourth order.
     (A. Bolton, U. of Utah, 2011may)
     """
-    from bbspec.spec2d import pgh
-
     def __init__(self, filename):
         """
         Load PSF from file.  See PSFBase doc for details.
@@ -133,7 +133,7 @@ class PSFGaussHermite2D(PSFBase):
         self.mvalues = []
         self.nvalues = []
         self.ordernames = []
-        for thisord in range(maxorder+1):
+        for thisord in range(self.maxorder+1):
             for thism in range(0, thisord+1):
                 thisn = thisord - thism
                 thisname = 'PGH(' + str(thism) + ',' + str(thisn) + ')'
