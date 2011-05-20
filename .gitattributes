@@ -8,7 +8,6 @@ examples/make_gauss2d_psf.py -text
 examples/make_test_spectra.py -text
 examples/pix2spec.py -text
 examples/plot_test_results.py -text
-examples/spBasisPSF-r1-00122444.fits -text svneol=unset#unset
 examples/spec2pix.py -text
 examples/test_data_model.sh -text
 python/bbspec/__init__.py -text
