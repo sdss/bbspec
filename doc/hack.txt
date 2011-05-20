@@ -10,3 +10,6 @@ EXTRACT_OBJECT
    No code changes except to call BBSPEC_EXTRACT to replace the
    extracted fluxes and errors (line 303).
 
+BBSPEC_EXTRACT
+   New proc to call bbspec extraction looping over sub-images.
+
