@@ -9,10 +9,10 @@ import pyfits
 
 #- Hardcoded constants
 class C:
-    npix_x = 60    #- image dimensions
-    nspec  = 5     #- number of spectra
-    npix_y = 100    #- image dimensions
-    nflux  = 100    #- number of flux bins per spectrum
+    npix_x = 100    #- image dimensions
+    nspec  = 10     #- number of spectra
+    npix_y = 50    #- image dimensions
+    nflux  = 50    #- number of flux bins per spectrum
     dx = 10        #- spectral spacing on the image
 
 #- spatially varying PSF
@@ -61,7 +61,7 @@ def write_psf(filename):
     y = N.zeros( (C.nspec, C.nflux) )
     w = N.zeros( (C.nspec, C.nflux) )
     for i in range(C.nspec):
-        x[i] = C.dx*(i+1)
+        x[i] = C.dx*(i+0.5)
         y[i] = t
         w[i] = N.logspace(N.log10(3500), N.log10(8500), C.nflux)
    

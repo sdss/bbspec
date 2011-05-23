@@ -28,46 +28,61 @@ psf = load_psf(opts.psf)
 image = pyfits.getdata(opts.input, 0)
 ivar = pyfits.getdata(opts.input, 1)
 
-#- Generate the matrix to solve
-print "Generating A matrix"
-A = N.zeros( (psf.npix_y*psf.npix_x, psf.nspec*psf.nflux) )
-tmp = N.zeros( (psf.npix_y, psf.npix_x) )
-for i in range(psf.nspec):
-    for j in range(psf.nflux):
-        xslice, yslice, pix = psf.pix(i, j)
-        tmp[yslice, xslice] = pix
-        ij = i*psf.nflux + j
-        A[:, ij] = tmp.ravel()
-        tmp[yslice, xslice] = 0.0
+#- HACK TEST
+# ivar *= 0.0
 
-print 'Solving'
-t0 = time()
-noise = N.sqrt(1/ivar).ravel()
-p = image.ravel() / noise
+#- Catch case where
+if N.all(ivar == 0.0):
+    print >> sys.stderr, 'WARNING: All input variances are 0.0 -- writing dummy output'
+    xspec0 = xspec1 = xspec_ivar = N.zeros( (psf.nspec, psf.nflux) )
+    nx = psf.nspec * psf.nflux
+    R = ATA = N.zeros( (nx, nx) )
+else:
+    #- Generate the matrix to solve
+    print "Generating A matrix"
+    A = N.zeros( (psf.npix_y*psf.npix_x, psf.nspec*psf.nflux) )
+    tmp = N.zeros( (psf.npix_y, psf.npix_x) )
+    for i in range(psf.nspec):
+        for j in range(psf.nflux):
+            xslice, yslice, pix = psf.pix(i, j)
+            tmp[yslice, xslice] = pix
+            ij = i*psf.nflux + j
+            A[:, ij] = tmp.ravel()
+            tmp[yslice, xslice] = 0.0
 
-NiA = N.dot(N.diag(1/noise), A) 
-ATA = N.dot(A.T, NiA)
-ATAinv = N.linalg.inv(ATA)
-xspec0 = N.dot( ATAinv, N.dot(A.T, p) ).reshape( (psf.nspec, psf.nflux) )
-t1 = time()
-### print '  --> %.1f seconds' % (t1-t0)
+    print 'Solving'
+    t0 = time()
+    p = image.ravel() * N.sqrt(ivar).ravel()
 
-#- Reconvolve flux by resolution
-#- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
-#- so use full A.T A matrix
-print "Reconvolving"
-R = resolution_from_icov(ATA)
-xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
+    NiA = N.dot(N.diag(N.sqrt(ivar).ravel()), A) 
+    ATA = N.dot(A.T, NiA)
+    try:
+        ATAinv = N.linalg.inv(ATA)        
+        xspec0 = N.dot( ATAinv, N.dot(A.T, p) ).reshape( (psf.nspec, psf.nflux) )
+        t1 = time()
+        print '  --> %.1f seconds' % (t1-t0)
 
-t2 = time()
-### print '  --> %.1f seconds' % (t2-t1)
+        #- Reconvolve flux by resolution
+        #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
+        #- so use full A.T A matrix
+        print "Reconvolving"
+        R = resolution_from_icov(ATA)
+        xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
 
-#- Variance of extracted reconvolved spectrum
-Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
-xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
-xspec_ivar = 1.0/xspec_var
+        t2 = time()
+        ### print '  --> %.1f seconds' % (t2-t1)
 
-
+        #- Variance of extracted reconvolved spectrum
+        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
+        xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
+        xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
+    except N.linalg.LinAlgError, e:
+        print >> sys.stderr, "WARNING: LinAlgError -- writing dummy output"
+        ### print >> sys.stderr, e
+        xspec0 = xspec1 = xspec_ivar = N.zeros( (psf.nspec, psf.nflux) )
+        nx = psf.nspec * psf.nflux
+        R = ATA = N.zeros( (nx, nx) )
+        
 #- Output results
 print "Writing output"
 hdus = list()
