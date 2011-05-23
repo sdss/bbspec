@@ -15,8 +15,9 @@ import optparse
 parser = optparse.OptionParser(usage = "%prog [options]")
 parser.add_option("-s", "--spectra", type="string", help="input spectra")
 parser.add_option("-x", "--xspec", type="string",  help="extracted spectra")
-parser.add_option("-i", "--image", type="string",  help="image")
+parser.add_option("-i", "--image", type="string",  help="input image")
 parser.add_option("-p", "--psf", type="string",  help="psf")
+parser.add_option("-m", "--model", type="string",  help="model image")
 
 opts, args = parser.parse_args()
 
@@ -30,16 +31,17 @@ xspec0 = pyfits.getdata(opts.xspec, 3)  #- un-convolved spectra
 #- Input spectra, convolved with resolution
 cspec = N.dot(R, inspec.ravel()).reshape(inspec.shape)
 
-#- Input image
+#- Load inputs 
 image = pyfits.getdata(opts.image)
-
-#- Model image
 psf = load_psf(opts.psf)
-model = N.zeros( (psf.npix_y, psf.npix_x) )
-for i in range(nspec):
-    for j in range(nflux):
-        xslice, yslice, pix = psf.pix(i, j)
-        model[yslice, xslice] += xspec0[i, j] * pix
+model = pyfits.getdata(opts.model)
+
+#- Recreate model image
+# model = N.zeros( (psf.npix_y, psf.npix_x) )
+# for i in range(nspec):
+#     for j in range(nflux):
+#         xslice, yslice, pix = psf.pix(i, j)
+#         model[yslice, xslice] += xspec0[i, j] * pix
 
 #- Plots!
 P.subplot(211)

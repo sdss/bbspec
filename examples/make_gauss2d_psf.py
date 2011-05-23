@@ -9,11 +9,15 @@ import pyfits
 
 #- Hardcoded constants
 class C:
-    npix_x = 100    #- image dimensions
-    nspec  = 10     #- number of spectra
+    npix_x = 70    #- image dimensions
+    nspec  = 7     #- number of spectra
     npix_y = 50    #- image dimensions
     nflux  = 50    #- number of flux bins per spectrum
     dx = 10        #- spectral spacing on the image
+
+#- Testing single fiber extraction
+### C.npix_x = 10
+### C.nspec = 1
 
 #- spatially varying PSF
 def psf_params(x0, y0):
