@@ -51,6 +51,7 @@ read_noise = 2.0
 var = image + read_noise**2
 image += N.random.normal(scale=N.sqrt(var), size=image.shape)
 ivar = 1.0 / var
+ivar = ivar.reshape(image.shape)
 
 #- Write output
 hdus = list()
