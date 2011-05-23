@@ -28,10 +28,7 @@ psf = load_psf(opts.psf)
 image = pyfits.getdata(opts.input, 0)
 ivar = pyfits.getdata(opts.input, 1)
 
-#- HACK TEST
-# ivar *= 0.0
-
-#- Catch case where
+#- Catch case where all input variances are 0.0
 if N.all(ivar == 0.0):
     print >> sys.stderr, 'WARNING: All input variances are 0.0 -- writing dummy output'
     xspec0 = xspec1 = xspec_ivar = N.zeros( (psf.nspec, psf.nflux) )
