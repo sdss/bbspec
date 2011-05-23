@@ -3,10 +3,11 @@
 #- Run this script to generate examples of the data model files
 #- and exercise various steps of the code
 
-PSF_FILE="psf_gauss2d.fits"
-SPEC_FILE="test_spectra.fits"
-IMAGE_FILE="test_image.fits"
-XSPEC_FILE="extracted_spectra.fits"
+#- Filenames
+PSF_FILE="spBasisPSF-Gauss2D-TEST.fits"
+SPEC_FILE="input_spectra-TEST.fits"
+IMAGE_FILE="sdProc-Gauss2D-TEST.fits"
+XSPEC_FILE="extracted_spectra-TEST.fits"
 
 echo "-- Generating 2D Gaussian PSF"
 python make_gauss2d_psf.py -o $PSF_FILE
@@ -27,5 +28,5 @@ echo "   Spectra x PSF = Image : $IMAGE_FILE"
 echo "   Extracted spectra     : $XSPEC_FILE"
 
 echo "-- Plotting results"
-python plot_test_results.py -s test_spectra.fits -x extracted_spectra.fits -i test_image.fits -p psf_gauss2d.fits 
+python plot_test_results.py -s $SPEC_FILE -x $XSPEC_FILE -i $IMAGE_FILE -p $PSF_FILE 
 
