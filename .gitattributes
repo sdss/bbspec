@@ -5,6 +5,7 @@ doc/datamodel.txt -text
 doc/hack.txt -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
+examples/make-my-psf.py -text
 examples/make_gauss2d_psf.py -text
 examples/make_test_spectra.py -text
 examples/pix2spec.py -text

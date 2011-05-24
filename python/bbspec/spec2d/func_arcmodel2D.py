@@ -1,24 +1,24 @@
 import numpy as n
-import matplotlib as m
-m.rc('text', usetex=True)
-m.interactive(True)
-from matplotlib import pyplot as p
-from matplotlib import cm
+#import matplotlib as m
+#m.rc('text', usetex=True)
+#m.interactive(True)
+#from matplotlib import pyplot as p
+#from matplotlib import cm
 import pyfits as pf
-from scipy import optimize as opt
-import  pylab as pp
+#from scipy import optimize as opt
+#import  pylab as pp
 from scipy import special
-from scipy.sparse import *
-from scipy import *
-from scipy import sparse
-from scipy.sparse import linalg
-from scipy.sparse.linalg import dsolve
-from scipy.sparse.linalg.dsolve import linsolve
-from scipy.sparse import linalg as sla
-import scipy.special as spc
+#from scipy.sparse import *
+#from scipy import *
+#from scipy import sparse
+#from scipy.sparse import linalg
+#from scipy.sparse.linalg import dsolve
+#from scipy.sparse.linalg.dsolve import linsolve
+#from scipy.sparse import linalg as sla
+#import scipy.special as spc
 from scipy import interpolate
-import matplotlib.pyplot as plt
-from scipy import linalg 
+#import matplotlib.pyplot as plt
+#from scipy import linalg 
 from bbspec.spec2d import pgh as GH
 
 x1 = -5
@@ -33,27 +33,25 @@ fibBun = 20
 ypoints = 4128
 nbund =  25
 yvalues = n.arange(0,ypoints,1)
+bStart = 0 # starting bundle
+bEnd = 0 # ending bundle
 
 def model_arc(arcid, flatid, indir = '.', outdir = '.'):
 
-	spArc_file = indir + 'spArc-' + arcid + '.fits' 
-	spFlat_file = indir + 'spFlat-' + flatid + '.fits' 
-	data_file = indir + 'sdProc-' + arcid + '.fits' 
+	spArc_file = indir + '/spArc-' + arcid + '.fits.gz' 
+	spFlat_file = indir + '/spFlat-' + flatid + '.fits.gz' 
+	data_file = indir + '/sdProc-' + arcid + '.fits' 
 
-	"""
-	spArc_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spArc-r1-00115982.fits.gz'
-	spFlat_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spFlat-r1-00115981.fits.gz'
-	image_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/imageR1ver2.fits'
-	invvr_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/invrR1ver2.fits'
-	"""
-
-	# Data from sdR files 
+        #spArc_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spArc-r1-00115982.fits.gz'
+        #spFlat_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spFlat-r1-00115981.fits.gz'
+	#image_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/imageR1ver2.fits'
+	#invvr_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/invrR1ver2.fits'
+	
+	# Data & invvar from sdR files 
 	data = pf.open(data_file)
 	biasSubImg = data[0].data
-
-	# inverse variance
-	invvr = pf.open(data_file)
-	invvr = invvr[1].data
+	invvr = data[1].data
+	data.close()
 
 	# Data from spArc files
 	[goodwaveypos, good_wavelength, wavelength, arcSigma] = dataspArc(spArc_file)
@@ -75,8 +73,8 @@ def model_arc(arcid, flatid, indir = '.', outdir = '.'):
 
 	# define max order
 	maxorder = 4	
-	
-	for i_bund in range(0, 1):
+
+	for i_bund in range(bStart, bEnd+1):
 	    kcons = i_bund*fibBun
 	    for i_actwave in range(0, nwavelen):
 	    	# declare variables
@@ -374,7 +372,7 @@ def createPSFBasis(idlstring,coeffAll, wavelength, xpos_final, flatSigma,good_wa
 	hdu18 = pf.ImageHDU(theta14)
 	hdu18.header.update('PSFPARAM', 'PGH(4,0)', 'Pixelated Gauss-Hermite Order: (4,0)')
 	hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
-	fname = 'spBasisPSF-' + arcid+'.fits'
+	fname = outdir + '/spBasisPSF-' + arcid+'.fits'
 	hdulist.writeto(fname, clobber=True)
 	return (fname)
 
@@ -487,7 +485,7 @@ def createPSFArc(idlstring,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,n
 
 	hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 
-	fname = 'spArcPSF-' + arcid +'.fits'
+	fname = outdir + '/spArcPSF-' + arcid +'.fits'
 	hdulist.writeto(fname, clobber=True)
 	return (fname)
 	
