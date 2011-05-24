@@ -16,6 +16,7 @@ def sym_sqrt(a):
     WRITTEN: Adam S. Bolton, U. of Utah, 2009
     """
     w, v = n.linalg.eigh(a)
+    w[w<0]=0 # Is this necessary to enforce eigenvalues positive definite???
     dm = n.diagflat(n.sqrt(w))
     return n.dot(v, n.dot(dm, n.transpose(v)))
 
