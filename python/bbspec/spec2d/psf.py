@@ -164,6 +164,9 @@ class PSFGaussHermite2D(PSFBase):
         xbase = N.arange(xmin - xcr, xmax - xcr + 1, dtype=float)
         ybase = N.arange(ymin - ycr, ymax - ycr + 1, dtype=float)
         nx, ny = len(xbase), len(ybase)
+        # Don't go any further if we've got a null dimension:
+        if (nx == 0) or (ny == 0):
+            return slice(0, 0), slice(0, 0), N.zeros((0,0), dtype=float)
         # Build the output slices:
         xslice = slice(xmin, xmax+1)
         yslice = slice(ymin, ymax+1)
