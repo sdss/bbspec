@@ -146,10 +146,14 @@ class SimpleExtractor(Extractor):
 
         print 'Solving'
         t0 = time()
-        p = image.ravel() * N.sqrt(ivar).ravel()
-
-        NiA = N.dot(N.diag(N.sqrt(ivar).ravel()), A) 
+        sqrt_ivar = N.sqrt(ivar)
+        p = (image * sqrt_ivar).ravel()
+        ### NiA = N.dot(N.diag(N.sqrt(ivar).ravel()), A)
+        NiA = (sqrt_ivar.ravel() * A.T).T  #- much faster
+        
         ATA = N.dot(A.T, NiA)
+
+        #- Directly solve by inverting ATA
         try:
             ATAinv = N.linalg.inv(ATA)   
         except N.linalg.LinAlgError:
@@ -157,9 +161,18 @@ class SimpleExtractor(Extractor):
             self._fill_dummy_values()
             return
                      
-        xspec0 = N.dot( ATAinv, N.dot(A.T, p) ).reshape( (psf.nspec, psf.nflux) )
+        xspec0 = N.dot( ATAinv, N.dot(A.T, p) )
+        
+        #- Alternate: Solve by LU decomposition with call to N.linalg.solve
+        #- Note: not exactly the same solution
+        #- Note: doesn't create ATAinv, which we need for reconvolving
+        # xspec0 = N.linalg.solve(ATA, N.dot(A.T, p))
+        
         t1 = time()
         print '  --> %.1f seconds' % (t1-t0)
+        
+        xspec0 = xspec0.reshape( (psf.nspec, psf.nflux) )
+        
 
         #- Reconvolve flux by resolution
         #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
@@ -167,9 +180,6 @@ class SimpleExtractor(Extractor):
         print "Reconvolving"
         R = resolution_from_icov(ATA)
         xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
-
-        t2 = time()
-        ### print '  --> %.1f seconds' % (t2-t1)
 
         #- Variance of extracted reconvolved spectrum
         Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
