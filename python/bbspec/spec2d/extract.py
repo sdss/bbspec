@@ -9,6 +9,8 @@ import sys
 from time import time
 
 import numpy as N
+import scipy.sparse
+from scipy.sparse.linalg import spsolve
 
 from bbspec.spec2d import resolution_from_icov
 
@@ -109,7 +111,9 @@ class Extractor(object):
 
 _t0 = None
 def _timeit(comment=None):
-    return
+    
+    return  ###
+    
     global _t0
     if _t0 is None:
         if comment is not None:
@@ -122,6 +126,13 @@ def _timeit(comment=None):
             print '%-25s : %.1f' % (comment, t1-_t0)
             pass
         _t0 = t1
+
+def _sparsify(A):
+    yy, xx = N.where(A != 0.0)
+    vv = A[yy, xx]
+    Ax = scipy.sparse.coo_matrix((vv, (yy, xx)), shape=A.shape)
+    return Ax
+
 
 class SimpleExtractor(Extractor):
     """Simple brute-force non-optimized extraction algorithm"""
@@ -151,52 +162,32 @@ class SimpleExtractor(Extractor):
         p = (image.ravel() * sqrt_ivar)
             
         #- Generate the matrix to solve
-        # _timeit()
-        # A = psf.getA()
-        # _timeit('Get A')
-        # 
-        # NiA = (sqrt_ivar * A.T).T  #- Faster than N.dot(N.diag(sqrt_ivar), A)
-        # ATA = N.dot(A.T, NiA)
-        # _timeit('Make ATA')
-        # 
-        # #- Directly solve by inverting ATA
-        # try:
-        #     ATAinv = N.linalg.inv(ATA)   
-        #     _timeit('Invert ATA')
-        # except N.linalg.LinAlgError:
-        #     print >> sys.stderr, "ERROR: Can't invert matrix"
-        #     self._fill_dummy_values()
-        #     return
-                             
-        #- Try sparse matrix
-        import scipy.sparse
-        from scipy.sparse.linalg import spsolve
         _timeit()
         Ax = psf.getSparseA()
         _timeit('Get Sparse A')
+        
         ixy = N.arange(len(sqrt_ivar))
         npix = psf.npix_x * psf.npix_y
         Ni = scipy.sparse.coo_matrix( (sqrt_ivar, (ixy, ixy)), shape=(npix, npix) )
+        
         NiAx = Ni.dot(Ax)
         ATAx = Ax.T.dot(NiAx)
         _timeit('Make ATAx')
-        ### _x = spsolve(ATAx, N.dot(Ax.T, p))
-        ATA = N.array(ATAx.todense())
         
+        ATA = N.array(ATAx.todense())        
         ATAinv = N.linalg.inv(ATA)   
         _timeit('Invert ATA')
 
         #- Solve for flux
-        # xspec0 = N.dot( ATAinv, N.dot(A.T, p) )    #- Full
-        xspec0 = N.array(ATAinv.dot(Ax.T.dot(p)))  #- Sparse
-        
+        xspec0 = N.array(ATAinv.dot(Ax.T.dot(p)))  #- Sparse        
         xspec0 = xspec0.reshape( (psf.nspec, psf.nflux) )
         _timeit('Project pixels to flux')
-        
+                
         #- Reconvolve flux by resolution
         #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
         #- so use full A.T A matrix
         R = resolution_from_icov(ATA)
+        _timeit('Find R')
         xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
         _timeit('Reconvolve')
 

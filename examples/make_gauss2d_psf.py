@@ -15,11 +15,15 @@ class C:
     nflux  = 90    #- number of flux bins per spectrum
     dx = 10        #- spectral spacing on the image
 
-#- Testing single fiber extraction
+#- Big
 # C.npix_x = 200
 # C.nspec = 20
-# C.npix_y = 150
-# C.nflux = 140
+
+#- Bigger
+# C.npix_x = 200
+# C.nspec = 20
+# C.npix_y = 160
+# C.nflux = 150
 
 #- spatially varying PSF
 def psf_params(x0, y0):

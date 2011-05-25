@@ -1,5 +1,6 @@
 import numpy as n
 from scipy import special as sp
+from scipy.sparse.construct import spdiags
 
 def sym_sqrt(a):
     """
@@ -15,10 +16,19 @@ def sym_sqrt(a):
 
     WRITTEN: Adam S. Bolton, U. of Utah, 2009
     """
+    
     w, v = n.linalg.eigh(a)
     w[w<0]=0 # Is this necessary to enforce eigenvalues positive definite???
-    dm = n.diagflat(n.sqrt(w))
-    return n.dot(v, n.dot(dm, n.transpose(v)))
+        
+    # dm = n.diagflat(n.sqrt(w))
+    # result = n.dot(v, n.dot(dm, n.transpose(v)))
+
+    #- A bit faster with sparse matrix for multiplication:
+    nw = len(w)
+    dm = spdiags(n.sqrt(w), 0, nw, nw)
+    result = v.dot( dm.dot(v.T) )
+    
+    return result
 
 def resolution_from_icov(icov):
     """

@@ -13,6 +13,8 @@ from time import time
 from bbspec.spec2d.psf import load_psf
 from bbspec.spec2d import resolution_from_icov
 
+t0 = time()
+
 import optparse
 
 parser = optparse.OptionParser(usage = "%prog [options]")
@@ -53,6 +55,8 @@ hdus[4].header.add_comment('Inverse covariance of original extracted spectra')
 
 hdus.writeto(opts.output, clobber=True)
 
+dt = time() - t0
+print '  --> %.1f sec' % dt
 
 
 
