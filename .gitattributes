@@ -3,6 +3,7 @@
 /RELEASE_NOTES -text
 doc/datamodel.txt -text
 doc/hack.txt -text
+examples/DemoPGHfulltest.py -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
 examples/make-my-psf.py -text
