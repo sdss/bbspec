@@ -17,6 +17,7 @@ y = n.arange(y1,y2,1)
 fibNo =  500
 nwavelen = 65
 fibBun = 20
+xpoints = 4114
 ypoints = 4128
 nbund =  25
 yvalues = n.arange(0,ypoints,1)
@@ -24,6 +25,9 @@ bStart = 0 # starting bundle
 bEnd = 0 # ending bundle
 
 def model_arc(arcid, flatid, indir = '.', outdir = '.'):
+
+	#- make floating point errors fatal (fail early, fail often)
+	n.seterr(all='raise')
 
 	spArc_file = indir + '/spArc-' + arcid + '.fits.gz' 
 	spFlat_file = indir + '/spFlat-' + flatid + '.fits.gz' 
@@ -301,10 +305,10 @@ def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,goo
 
 	hdu0 = pf.PrimaryHDU(xcenterf)
 	hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
-	hdu0.header.update('NPIX_X','4114', 'number of image pixels in the X-direction')
-	hdu0.header.update('NPIX_Y', str(ypoints), 'number of image pixels in the Y-direction')
-	hdu0.header.update('NFLUX',  str(ypoints),   'number of flux bins per spectrum [NAXIS1]')
-	hdu0.header.update('NSPEC',  'fibBun',  'number of spectra [NAXIS2]')
+	hdu0.header.update('NPIX_X', xpoints, 'number of image pixels in the X-direction')
+	hdu0.header.update('NPIX_Y', ypoints, 'number of image pixels in the Y-direction')
+	hdu0.header.update('NFLUX',  ypoints,   'number of flux bins per spectrum [NAXIS1]')
+	hdu0.header.update('NSPEC',  fibBun,  'number of spectra [NAXIS2]')
 	hdu0.header.update('PSFPARAM', 'X', 'X position as a function of flux bin')
 
 	hdu1 = pf.ImageHDU(ycenterf)
@@ -412,10 +416,12 @@ def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,m
 
 		
 	# write to FITS file
-	hdu0 = pf.PrimaryHDU(xcenterf)
+	hdu0 = pf.PrimaryHDU(xcenterf)	
 	hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
-	hdu0.header.update('NFLUX',  str(nwavelen),   'number of flux bins per spectrum [NAXIS1]')
-	hdu0.header.update('NSPEC',  str(fibNo),  'number of spectra [NAXIS2]')
+	hdu0.header.update('NPIX_X', xpoints, 'number of image pixels in the X-direction')
+	hdu0.header.update('NPIX_Y', ypoints, 'number of image pixels in the Y-direction')
+	hdu0.header.update('NFLUX',  nwavelen,   'number of flux bins per spectrum [NAXIS1]')
+	hdu0.header.update('NSPEC',  fibNo,  'number of spectra [NAXIS2]')
 	hdu0.header.update('PSFPARAM', 'X', 'X position as a function of flux bin')
 
 	hdu1 = pf.ImageHDU(ycenterf)
@@ -491,9 +497,11 @@ def dataspArc(spArc_file):
 	xmin =  ysigma.field(1)  
 	xmax =  ysigma.field(2)
 	coeff = ysigma.field(3)
-	coeffDim = n.shape(coeff)[1]
-	#print coeffDim
-	legendreDim = coeffDim/nfib
+	
+	#- Work around pyfits bug which doesn't properly support 2D arrays in tables
+	ncoeff = coeff.size / nfib
+	coeff = coeff.reshape( (nfib, ncoeff) )
+	
 	nx = xmax-xmin+1
 	xbase = n.arange(xmin,xmax-xmin+1,1)
 	x_1 = xmin
@@ -509,16 +517,23 @@ def dataspArc(spArc_file):
 		ltemp = ltemp(x_p_base)
 		l = n.vstack((l,ltemp))
 
-	r = n.transpose(coeff[0,:,:])
+	### r = n.transpose(coeff[0,:,:])
+	r = coeff
+	
 	Ysig = n.dot(r,l[1:])
 	Ysig = n.transpose(Ysig)
 	arcSigma =Ysig
-
+	
 	#wavelength value at each Y-center
 	waveset 	= h_spArc[2].data
 	xminwave 	= waveset.field(1)
 	xmaxwave 	= waveset.field(2)
 	coeffwave 	= waveset.field(3)
+
+	#- Work around pyfits bug which doesn't properly support 2D arrays in tables
+	ncoeffwave = coeffwave.size / nfib
+	coeffwave = coeffwave.reshape( (nfib, ncoeffwave) )
+
 	nxwave = xmaxwave-xminwave+1
 	xbasewave = n.arange(xminwave,xmaxwave-xminwave+1,1)
 	x_1wave = xminwave
@@ -562,6 +577,11 @@ def dataspFlat(spFlat_file):
 	xminSig 	=  sigma.field(1)
 	xmaxSig 	=  sigma.field(2)
 	coeffXSig 	=  sigma.field(3)
+	
+	#- Work around pyfits bug which doesn't properly support 2D arrays in tables
+	ncoeffXSig = coeffXSig.size / nfib
+	coeffXSig = coeffXSig.reshape( (nfib, ncoeffXSig) )
+	
 	nxSig = xmaxSig-xminSig+1
 	xbaseSig = n.arange(xminSig,xmaxSig-xminSig+1,1)
 	x_1Sig = xminSig
@@ -590,6 +610,11 @@ def dataspFlat(spFlat_file):
 	xmin =  peakPos.field(1)
 	xmax =  peakPos.field(2)
 	coeffxpos = peakPos.field(3)
+	
+	#- Work around pyfits bug which doesn't properly support 2D arrays in tables
+	ncoeffxpos = coeffxpos.size / nfib
+	coeffxpos = coeffxpos.reshape( (nfib, ncoeffxpos) )
+	
 	nx = xmax-xmin+1
 	xbase = n.arange(xmin,xmax-xmin+1,1)
 	x_1 = xmin
