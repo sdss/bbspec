@@ -16,7 +16,8 @@ PSFobj = psf.load_psf(f)
 bigim = n.zeros((PSFobj.npix_y, PSFobj.npix_x), dtype=float)
 
 for ispec in range(20):
-    for iflux in range(200, 3800, 200):
+    #for iflux in range(200, 3800, 200):
+     for iflux in range(2000, 2001): 	
         xs, ys, im = PSFobj.pix(ispec, iflux)
         bigim[ys,xs] += im
 
