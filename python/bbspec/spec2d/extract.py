@@ -107,6 +107,22 @@ class Extractor(object):
 
 #-------------------------------------------------------------------------
 
+_t0 = None
+def _timeit(comment=None):
+    return
+    global _t0
+    if _t0 is None:
+        if comment is not None:
+            print comment
+            pass
+        _t0 = time()
+    else:
+        t1 = time()
+        if comment is not None:
+            print '%-25s : %.1f' % (comment, t1-_t0)
+            pass
+        _t0 = t1
+
 class SimpleExtractor(Extractor):
     """Simple brute-force non-optimized extraction algorithm"""
     def __init__(self, image, image_ivar, psf):
@@ -131,60 +147,64 @@ class SimpleExtractor(Extractor):
         psf = self._psf
         image = self._image
         ivar = self._image_ivar
+        sqrt_ivar = N.sqrt(ivar).ravel()
+        p = (image.ravel() * sqrt_ivar)
             
         #- Generate the matrix to solve
-        print "Generating A matrix"
-        A = N.zeros( (psf.npix_y*psf.npix_x, psf.nspec*psf.nflux) )
-        tmp = N.zeros( (psf.npix_y, psf.npix_x) )
-        for i in range(psf.nspec):
-            for j in range(psf.nflux):
-                xslice, yslice, pix = psf.pix(i, j)
-                tmp[yslice, xslice] = pix
-                ij = i*psf.nflux + j
-                A[:, ij] = tmp.ravel()
-                tmp[yslice, xslice] = 0.0
+        # _timeit()
+        # A = psf.getA()
+        # _timeit('Get A')
+        # 
+        # NiA = (sqrt_ivar * A.T).T  #- Faster than N.dot(N.diag(sqrt_ivar), A)
+        # ATA = N.dot(A.T, NiA)
+        # _timeit('Make ATA')
+        # 
+        # #- Directly solve by inverting ATA
+        # try:
+        #     ATAinv = N.linalg.inv(ATA)   
+        #     _timeit('Invert ATA')
+        # except N.linalg.LinAlgError:
+        #     print >> sys.stderr, "ERROR: Can't invert matrix"
+        #     self._fill_dummy_values()
+        #     return
+                             
+        #- Try sparse matrix
+        import scipy.sparse
+        from scipy.sparse.linalg import spsolve
+        _timeit()
+        Ax = psf.getSparseA()
+        _timeit('Get Sparse A')
+        ixy = N.arange(len(sqrt_ivar))
+        npix = psf.npix_x * psf.npix_y
+        Ni = scipy.sparse.coo_matrix( (sqrt_ivar, (ixy, ixy)), shape=(npix, npix) )
+        NiAx = Ni.dot(Ax)
+        ATAx = Ax.T.dot(NiAx)
+        _timeit('Make ATAx')
+        ### _x = spsolve(ATAx, N.dot(Ax.T, p))
+        ATA = N.array(ATAx.todense())
+        
+        ATAinv = N.linalg.inv(ATA)   
+        _timeit('Invert ATA')
 
-        print 'Solving'
-        t0 = time()
-        sqrt_ivar = N.sqrt(ivar)
-        p = (image * sqrt_ivar).ravel()
-        ### NiA = N.dot(N.diag(N.sqrt(ivar).ravel()), A)
-        NiA = (sqrt_ivar.ravel() * A.T).T  #- much faster
-        
-        ATA = N.dot(A.T, NiA)
-
-        #- Directly solve by inverting ATA
-        try:
-            ATAinv = N.linalg.inv(ATA)   
-        except N.linalg.LinAlgError:
-            print >> sys.stderr, "ERROR: Can't invert matrix"
-            self._fill_dummy_values()
-            return
-                     
-        xspec0 = N.dot( ATAinv, N.dot(A.T, p) )
-        
-        #- Alternate: Solve by LU decomposition with call to N.linalg.solve
-        #- Note: not exactly the same solution
-        #- Note: doesn't create ATAinv, which we need for reconvolving
-        # xspec0 = N.linalg.solve(ATA, N.dot(A.T, p))
-        
-        t1 = time()
-        print '  --> %.1f seconds' % (t1-t0)
+        #- Solve for flux
+        # xspec0 = N.dot( ATAinv, N.dot(A.T, p) )    #- Full
+        xspec0 = N.array(ATAinv.dot(Ax.T.dot(p)))  #- Sparse
         
         xspec0 = xspec0.reshape( (psf.nspec, psf.nflux) )
+        _timeit('Project pixels to flux')
         
-
         #- Reconvolve flux by resolution
         #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
         #- so use full A.T A matrix
-        print "Reconvolving"
         R = resolution_from_icov(ATA)
         xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
+        _timeit('Reconvolve')
 
         #- Variance of extracted reconvolved spectrum
         Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
         xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
         xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
+        _timeit('Calculate Variance')
         
         #- Rename working variables for output
         self._spectra = xspec1

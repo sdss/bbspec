@@ -5,9 +5,9 @@ Classes and functions for manipulating 2D PSFs
 """
 
 import numpy as N
+import scipy.sparse
 import pyfits
 from bbspec.spec2d import pgh
-
 
 class PSFBase(object):
     """Base class for 2D PSFs"""
@@ -45,6 +45,64 @@ class PSFBase(object):
         returns xslice, yslice, pixels[yslice, xslice]
         """
         raise NotImplementedError
+    
+    def getA(self):
+        """
+        return dense matrix A[npix, nspec*nflux] where each column is the
+        flattened pixel values for the PSF projected from a given flux bin.
+        """
+        A = N.zeros( (self.npix_y*self.npix_x, self.nspec*self.nflux) )
+        tmp = N.zeros( (self.npix_y, self.npix_x) )
+        for i in range(self.nspec):
+            for j in range(self.nflux):
+                xslice, yslice, pix = self.pix(i, j)
+                tmp[yslice, xslice] = pix
+                ij = i*self.nflux + j
+                A[:, ij] = tmp.ravel()
+                tmp[yslice, xslice] = 0.0
+        
+        return A
+
+    def getSparseA(self):
+        """
+        Return a sparse version of A matrix (see getA() )
+        
+        Current implementation creates the full A and then uses that to
+        make the sparse array.  Subsequent operations with sparse A are
+        fast, but this creation step could be optimized.
+        """
+        A = self.getA()
+        yy, xx = N.where(A != 0.0)
+        vv = A[yy, xx]
+        Ax = scipy.sparse.coo_matrix((vv, (yy, xx)), shape=A.shape)
+        return Ax.tocsr()
+        
+    def spec2pix(self, spectra):
+        """
+        Project spectra through psf to product image
+        
+        Input: spectra[nspec, nflux]
+        Output: image[npix_y, npix_x]
+        """
+        
+        #- Check input dimensions
+        nspec, nflux = spectra.shape
+        if nspec != self.nspec or nflux != self.nflux:
+            raise ValueError, "spectra dimensions [%d,%d] don't match PSF dimensions [%d,%d]" % \
+                (nspec, nflux, self.nspec, self.nflux)
+        
+        #- Project spectra into the image
+        image = N.zeros( (self.npix_y, self.npix_x) )
+        for ispec in range(self.nspec):
+            for iflux in range(self.nflux):
+                if spectra[ispec, iflux] == 0.0:
+                    continue
+
+                xslice, yslice, pixels = self.pix(ispec, iflux)
+                image[yslice, xslice] += pixels * spectra[ispec, iflux]
+                
+        return image
+        
         
 def load_psf(filename):
     """

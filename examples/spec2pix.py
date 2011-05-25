@@ -44,14 +44,15 @@ if nspec != psf.nspec or nflux != psf.nflux:
     sys.exit(1)
 
 #- Project spectra -> image with PSF
-image = N.zeros( (psf.npix_y, psf.npix_x) )
-for ispec in range(psf.nspec):
-    for iflux in range(psf.nflux):
-        if spectra[ispec, iflux] == 0.0:
-            continue
-    
-        xslice, yslice, pixels = psf.pix(ispec, iflux)
-        image[yslice, xslice] += pixels * spectra[ispec, iflux]
+# image = N.zeros( (psf.npix_y, psf.npix_x) )
+# for ispec in range(psf.nspec):
+#     for iflux in range(psf.nflux):
+#         if spectra[ispec, iflux] == 0.0:
+#             continue
+#     
+#         xslice, yslice, pixels = psf.pix(ispec, iflux)
+#         image[yslice, xslice] += pixels * spectra[ispec, iflux]
+image = psf.spec2pix(spectra)
 
 #- Add noise
 orig_image = None
