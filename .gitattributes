@@ -3,6 +3,7 @@
 /RELEASE_NOTES -text
 doc/datamodel.txt -text
 doc/hack.txt -text
+examples/DemoPGHfulltest.py -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
 examples/make-my-psf.py -text
@@ -10,8 +11,10 @@ examples/make_gauss2d_psf.py -text
 examples/make_test_spectra.py -text
 examples/pix2spec.py -text
 examples/plot_test_results.py -text
+examples/spArcPSF-r1-00115982.fits -text svneol=unset#unset
 examples/spBasisPSF-r1-00115982.fits -text svneol=unset#unset
 examples/spec2pix.py -text
+examples/test.txt -text
 examples/test_data_model.sh -text
 python/bbspec/__init__.py -text
 python/bbspec/spec2d/__init__.py -text
