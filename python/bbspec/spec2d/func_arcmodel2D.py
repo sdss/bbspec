@@ -1,25 +1,12 @@
 import numpy as n
-#import matplotlib as m
-#m.rc('text', usetex=True)
-#m.interactive(True)
-#from matplotlib import pyplot as p
-#from matplotlib import cm
 import pyfits as pf
-#from scipy import optimize as opt
-#import  pylab as pp
+from scipy import linalg 
+from bbspec.spec2d import boltonfuncs as GH
 from scipy import special
-#from scipy.sparse import *
-#from scipy import *
-#from scipy import sparse
-#from scipy.sparse import linalg
-#from scipy.sparse.linalg import dsolve
-#from scipy.sparse.linalg.dsolve import linsolve
-#from scipy.sparse import linalg as sla
-#import scipy.special as spc
 from scipy import interpolate
-#import matplotlib.pyplot as plt
-#from scipy import linalg 
-from bbspec.spec2d import pgh as GH
+from scipy import *
+
+
 
 x1 = -5
 x2 =  6
@@ -176,8 +163,8 @@ def model_arc(arcid, flatid, indir = '.', outdir = '.'):
 			coeffAll[i_bund*fibBun + i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
 			
 	
-	PSFArc = createPSFArc(arcid,GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn)
-	PSFBasis = createPSFBasis(arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn)
+	PSFArc = createPSFArc(outdir, arcid,GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn)
+	PSFBasis = createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn)
 	return (PSFArc , PSFBasis)
 
 # Function creates basis function at known wavelengths of arc-frames
@@ -218,8 +205,9 @@ def create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSi
                         startx= icenx-x1im
                         xPSF = n.zeros((len(x),1))
                         yPSF = n.zeros((len(y),1))
-			xPSF[:,0] = GH.pgh(x,cenF,sigmaF,mor)
-                        yPSF[:,0] = GH.pgh(y,cenA,sigmaF,nor)
+			#xPSF[:,0] = GH.pgh(x=x, xc = cenF, sigma = sigmaF ,m = mor)
+                        xPSF[:,0] = GH.pgh(x, mor, cenF, sigmaF)
+                        yPSF[:,0] = GH.pgh(y, nor, cenA, sigmaF)
                         out = n.outer(yPSF,xPSF)
 			datacenterval[i_k,0] = rowimage[starty,startx]
 			basisfunc[0,i_k,starty+y[0]:(starty+y[len(y)-1]+1),startx+x[0]:(startx+x[len(x)-1]+1)] = out
@@ -227,14 +215,15 @@ def create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSi
 			n_kVal = func_n_k(ypix)
 			# relative fiber throughput (n_k) taken as 1
 			n_k[i_k,0] = 1
-	n_kzero= where(n_k[:,0] == 0)
-	if (shape(n_kzero)[1] > 0 ):
-		flag = 0
-		return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
-	else:	
-		basisimage = basisimg(basisfunc, n_k)
-		flag = 1		
-		return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
+	#n_kzero = where(n_k[:,0] == 0)
+	#   n_kzero = 0 	
+	#if (shape(n_kzero)[1] > 0 ):
+	#	flag = 0
+	#	return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
+	#else:	
+	basisimage = basisimg(basisfunc, n_k)
+	flag = 1		
+	return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
 
 # supress the four dimensional basis function to two-dimensional
 def basisimg(A00, n_k):
@@ -266,7 +255,7 @@ def calparam(B,N,p1):
 	return(theta,t2,l1,t1,t2)
 	
 # write to FITS file
-def createPSFBasis(idlstring,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn):
+def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn):
 	theta0 = n.zeros((fibBun,ypoints))
 	theta1 = n.zeros((fibBun,ypoints))
 	theta2 = n.zeros((fibBun,ypoints))
@@ -376,7 +365,7 @@ def createPSFBasis(idlstring,coeffAll, wavelength, xpos_final, flatSigma,good_wa
 	hdulist.writeto(fname, clobber=True)
 	return (fname)
 
-def createPSFArc(idlstring,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn):
+def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn):
 	xcenterf  = n.zeros((fibNo,nwavelen))
 	ycenterf  = n.zeros((fibNo,nwavelen))
 	sigmaarrf  = n.zeros((fibNo,nwavelen))
