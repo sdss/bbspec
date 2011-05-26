@@ -172,10 +172,17 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 			z = n.polyfit(good_wavelength[reqwave], param, degree)
 			p = n.poly1d(z)
 			coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
-			
 	
-	PSFArc = createPSFArc(outdir, arcid,GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
-	PSFBasis = createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
+	#- Add bundle range to arcid for output name		
+	outid = arcid
+	if bStart != 0 or bEnd != 24:
+		if bStart == bEnd:
+			outid += '-%d' % bStart
+		else:
+			outid += '-%d-%d' % (bStart, bEnd)
+	
+	PSFArc = createPSFArc(outdir, outid, GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
+	PSFBasis = createPSFBasis(outdir, outid, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
 	return (PSFArc , PSFBasis)
 
 # Function creates basis function at known wavelengths of arc-frames

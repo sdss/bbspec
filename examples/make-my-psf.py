@@ -11,7 +11,12 @@ where arcid and flatid are identifier strings
 of the form, e.g., r1-XXXXXXXX
 """
 
-(f1, f2) = func_arcmodel2D.model_arc(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+arcid = sys.argv[1]
+flatid = sys.argv[2]
+first_bundle = int(sys.argv[3])
+last_bundle = int(sys.argv[4])
+
+(f1, f2) = func_arcmodel2D.model_arc(arcid, flatid, first_bundle, last_bundle)
 #(f1, f2) = func_arcmodel2D.model_arc(sys.argv[1], sys.argv[2])
 print 'Wrote '  + f1
 print 'Wrote '  + f2
