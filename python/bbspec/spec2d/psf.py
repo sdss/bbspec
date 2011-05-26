@@ -5,9 +5,26 @@ Classes and functions for manipulating 2D PSFs
 """
 
 import numpy as N
+import scipy.signal
 import scipy.sparse
 import pyfits
 from bbspec.spec2d import pgh
+from bbspec.spec2d.boltonfuncs import PGH
+from time import time
+
+#- Turn of complex -> real warnings in sinc interpolation
+import warnings
+warnings.simplefilter("ignore", N.ComplexWarning)
+
+#- Checkpoint for timing tests
+t0 = time()
+def checkpoint(comment=None):
+    global t0
+    tx = time()
+    if comment is not None:
+        dt = tx - t0
+        print "%-30s : %.5f" % (comment, dt)
+    t0 = tx
 
 class PSFBase(object):
     """Base class for 2D PSFs"""
@@ -119,6 +136,111 @@ def load_psf(filename):
         print "I don't know about PSFTYPE %s" % psftype
         raise NotImplementedError
 
+#-------------------------------------------------------------------------
+
+class PSFPixelated(PSFBase):
+    """
+    Pixelated PSF[ny, nx] = Ic[ny,nx] + x*Ix[ny, nx] + y*Iy[ny,nx] + ...
+    """
+    def __init__(self, filename):
+        """
+        Loads pixelated PSF parameters from a fits file
+        """
+        fx = pyfits.open(filename)
+        
+        self.npix_x = int(fx[0].header['NPIX_X'])
+        self.npix_y = int(fx[0].header['NPIX_Y'])
+        self.nspec  = int(fx[0].header['NSPEC'])
+        self.nflux  = int(fx[0].header['NFLUX'])
+        
+        #- Read in positions and wavelength solutions from first 3 headers
+        self.param = dict()
+        self.param['X'] = fx[0].data
+        self.param['Y'] = fx[1].data
+        self.param['LogLam'] = fx[2].data
+        
+        #- Additional headers are a custom format for the pixelated psf
+        self.psfimage = dict()
+        for i in range(3, len(fx)):
+            name = fx[i].header['PSFPARAM'].strip().lower()
+            self.psfimage[name] = fx[i].data
+        fx.close()
+        
+    def pix(self, ispec, iflux):
+        """
+        Evaluate PSF for a given spectrum and flux bin
+        
+        returns xslice, yslice, pixels[yslice, xslice]
+        """
+        x0 = self.param['X'][ispec, iflux]
+        y0 = self.param['Y'][ispec, iflux]
+        
+        x = (x0 - 0.5*self.npix_x) / self.npix_x
+        y = (y0 - 0.5*self.npix_y) / self.npix_y
+        
+        #- Generate PSF image at (x,y)
+        psfimg = self.psfimage['const'].copy()
+        for xy, image in self.psfimage.items():
+            #- xy has names like 'x', 'xy', 'xxy', 'xyy'
+            nx = xy.count('x')
+            ny = xy.count('y')
+            psfimg += x**nx * y**ny * image / 1000**(nx+ny)
+            
+        #- Sinc Interpolate
+        #- TODO: Check sign of shift
+        dx = int(x0) - x0
+        dy = int(y0) - y0
+        psfimg = self._sincshift(psfimg, dx, dy)
+        
+        #- Check boundaries
+        ny, nx = psfimg.shape
+        ix = int(round(x0))
+        iy = int(round(y0))
+        
+        xmin = max(0, ix-nx/2)
+        xmax = min(self.npix_x, ix+nx/2+1)
+        ymin = max(0, iy-ny/2)
+        ymax = min(self.npix_y, iy+ny/2+1)
+                
+        if ix < nx/2:
+            psfimg = psfimg[:, nx/2-ix:]
+        if iy < ny/2:
+            psfimg = psfimg[ny/2-iy:, :]
+        
+        if ix+nx/2 > self.npix_x:
+            dx = self.npix_x - (ix+nx/2)
+            psfimage = psfimg[:, :dx]
+            
+        if iy+ny/2 > self.npix_y:
+            dy = self.npix_y - (iy+ny/2)
+            psfimage = psfimg[:, :dy]
+        
+        xslice = slice(xmin, xmax+1)
+        yslice = slice(ymin, ymax+1)
+        
+        return xslice, yslice, image
+
+    #- Utility functions for sinc shifting pixelated PSF images
+    def _sincfunc(self, x, dx):
+        dampfac = 3.25
+        if dx != 0.0:
+            return N.exp( -((x+dx)/dampfac)**2 ) * N.sin( N.pi*(x+dx) ) / (N.pi * (x+dx))
+        else:
+            xx = N.zeros(len(x))
+            xx[len(x)/2] = 1.0
+            return xx
+
+    def _sincshift(self, image, dx, dy):
+        sincrad = 10
+        s = N.arange(-sincrad, sincrad+1)
+        sincx = self._sincfunc(s, dx)
+        sincy = self._sincfunc(s, dy)
+        kernel = N.outer(sincy, sincx)
+        newimage = scipy.signal.convolve2d(image, kernel, mode='same')
+        return newimage
+
+#-------------------------------------------------------------------------
+
 class PSFGauss2D(PSFBase):
     """Rotated 2D Gaussian PSF"""
     def __init__(self, filename):
@@ -175,6 +297,8 @@ class PSFGauss2D(PSFBase):
         ny = yslice.stop - yslice.start
         return xslice, yslice, pix.reshape( (ny, nx) )
 
+#-------------------------------------------------------------------------
+
 class PSFGaussHermite2D(PSFBase):
     """
     Pixel-integrated probabilist-form 2D Gauss-Hermite PSF.
@@ -188,6 +312,7 @@ class PSFGaussHermite2D(PSFBase):
         super(PSFGaussHermite2D, self).__init__(filename)
         # Initialize the list of orders
         self.maxorder = 4
+        self.pgh = PGH(self.maxorder)
         self.mvalues = []
         self.nvalues = []
         self.ordernames = []
@@ -228,12 +353,18 @@ class PSFGaussHermite2D(PSFBase):
         # Build the output slices:
         xslice = slice(xmin, xmax+1)
         yslice = slice(ymin, ymax+1)
+
         # Build the 1D functions:
-        xfuncs = N.zeros((self.maxorder+1, nx), dtype=float)
-        yfuncs = N.zeros((self.maxorder+1, ny), dtype=float)
-        for iorder in range(self.maxorder+1):
-            xfuncs[iorder] = pgh(xbase, m=iorder, xc=dxcen, sigma=sigma)
-            yfuncs[iorder] = pgh(ybase, m=iorder, xc=dycen, sigma=sigma)
+        # xfuncs = N.zeros((self.maxorder+1, nx), dtype=float)
+        # yfuncs = N.zeros((self.maxorder+1, ny), dtype=float)
+        # for iorder in range(self.maxorder+1):
+        #     xfuncs[iorder] = pgh(xbase, m=iorder, xc=dxcen, sigma=sigma)
+        #     yfuncs[iorder] = pgh(ybase, m=iorder, xc=dycen, sigma=sigma)
+         
+   		#- Faster
+        xfuncs = self.pgh.eval(xbase, xc=dxcen, sigma=sigma)
+        yfuncs = self.pgh.eval(ybase, xc=dycen, sigma=sigma)
+            
         # Build the output image:
         outimage = N.zeros((ny, nx), dtype=float)
         for iorder in range(len(self.ordernames)):
@@ -242,3 +373,4 @@ class PSFGaussHermite2D(PSFBase):
                                 xfuncs[self.mvalues[iorder]])
         # Pack up and return:
         return xslice, yslice, outimage
+

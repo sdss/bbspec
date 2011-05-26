@@ -114,7 +114,78 @@ def pgh(x, m=0, xc=0., sigma=1., dxlo=-0.5, dxhi=0.5):
     if m > 0:
         hiterm = - sp.hermitenorm(m-1)(uhi) * n.exp(-0.5 * uhi**2) / n.sqrt(2. * n.pi)
         loterm = - sp.hermitenorm(m-1)(ulo) * n.exp(-0.5 * ulo**2) / n.sqrt(2. * n.pi)
+        # poly = sp.hermitenorm(m-1).coeffs
+        # hiterm = - n.polyval(poly, uhi) * n.exp(-0.5 * uhi**2) / n.sqrt(2. * n.pi)
+        # loterm = - n.polyval(poly, ulo) * n.exp(-0.5 * ulo**2) / n.sqrt(2. * n.pi)
         return hiterm - loterm
     else:
         return 0.5 * (sp.erf(uhi/n.sqrt(2.)) - sp.erf(ulo/n.sqrt(2.)))
+
+class PGH(object):
+    """
+    pixelated (probabilist) Gauss-Hermite class
+    
+    This is an optimized version of the pgh function for the special case
+    of dxlo = -dxhi = 0.5 .  Using this class allows one to precompute the
+    hermitenorm polynomial coefficients once, and then use them multiple times.
+    
+    Stephen Bailey, LBNL, Spring 2011
+    """
+    
+    def __init__(self, maxorder):
+        """
+        Initialize object for maxorder number of Gauss-Hermite terms
+        """
+        self._maxorder = maxorder
+        self._coeffs = list()
+        for i in range(maxorder):
+            self._coeffs.append(sp.hermitenorm(i).coeffs)
+            
+    def eval(self, x, xc=0.0, sigma=1.0):
+        """
+        Evaluate Gauss-Hermite functions
+        
+        x: pixel-center baseline array
+        xc: sub-pixel position of Gaussian centroid relative to x baseline
+        sigma: sigma parameter of Gaussian core in units of pixels
+
+        returns array v[maxorder+1, len(x)]
+        """
+        u = (n.concatenate( (x-0.5, [x[-1]+0.5, ]) ) - xc) / sigma
+        
+        nx = len(x)
+        result = n.zeros( (self._maxorder+1, nx) )
+        
+        #- 0th order term is just a Gaussian
+        fn = 0.5*sp.erf(u/n.sqrt(2.0))
+        result[0] = fn[1:] - fn[0:-1]
+        
+        #- Higher order terms are Hermite polynomails * Gaussian
+        for m in range(1, self._maxorder+1):
+            fn = -n.polyval(self._coeffs[m-1], u) * n.exp(-0.5 * u**2)
+            result[m] = fn[1:] - fn[0:-1]
+            
+        result[1:] /= n.sqrt(2.0 * n.pi)
+            
+        return result
+
+
+"""
+from bbspec.spec2d.boltonfuncs import pgh, PGH
+p = PGH(5)
+x = N.arange(-5, 6)
+p.eval(x, xc=0.1, sigma=0.5)
+
+pgh(x, m=0, xc=0.1, sigma=0.5)
+"""
+
+
+
+
+
+
+
+
+
+
 
