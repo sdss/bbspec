@@ -14,18 +14,24 @@ y1 = -5
 y2 =  6
 x = n.arange(x1,x2,1) 
 y = n.arange(y1,y2,1)
-fibNo =  500
+Tfib =  500
+fibNo = 500
 nwavelen = 65
+loopwave =  65
+#loopbund = 
 fibBun = 20
 xpoints = 4114
 ypoints = 4128
 nbund =  25
 yvalues = n.arange(0,ypoints,1)
-bStart = 0 # starting bundle
-bEnd = 0 # ending bundle
+#bStart = 2 # starting bundle
+#bEnd = 2 # ending bundle
 
-def model_arc(arcid, flatid, indir = '.', outdir = '.'):
-
+#def model_arc(arcid, flatid, indir = '.', outdir = '.'):
+def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
+	bStart = int(bStart)
+	bEnd = int(bEnd)
+	loopBund =  bEnd - bStart + 1
 	#- make floating point errors fatal (fail early, fail often)
 	n.seterr(all='raise')
 
@@ -66,6 +72,7 @@ def model_arc(arcid, flatid, indir = '.', outdir = '.'):
 	maxorder = 4	
 
 	for i_bund in range(bStart, bEnd+1):
+	    print i_bund
 	    kcons = i_bund*fibBun
 	    for i_actwave in range(0, nwavelen):
 	    	# declare variables
@@ -164,11 +171,11 @@ def model_arc(arcid, flatid, indir = '.', outdir = '.'):
 			param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
 			z = n.polyfit(good_wavelength[reqwave], param, degree)
 			p = n.poly1d(z)
-			coeffAll[i_bund*fibBun + i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
+			coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
 			
 	
-	PSFArc = createPSFArc(outdir, arcid,GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn)
-	PSFBasis = createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn)
+	PSFArc = createPSFArc(outdir, arcid,GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
+	PSFBasis = createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
 	return (PSFArc , PSFBasis)
 
 # Function creates basis function at known wavelengths of arc-frames
@@ -259,7 +266,7 @@ def calparam(B,N,p1):
 	return(theta,t2,l1,t1,t2)
 	
 # write to FITS file
-def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn):
+def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
 	theta0 = n.zeros((fibBun,ypoints))
 	theta1 = n.zeros((fibBun,ypoints))
 	theta2 = n.zeros((fibBun,ypoints))
@@ -299,9 +306,9 @@ def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,goo
 	a = reshape(q, (ypoints,fibBun))
 	ycenterf  = n.transpose(a)
 		
-	xcenterf = n.transpose(xpos_final[:,0:fibBun])
-	sigmaarrf = n.transpose(flatSigma[:,0:fibBun])	
-	final_wavelength= n.transpose(log10(wavelength[:,0:fibBun]))
+	xcenterf = n.transpose(xpos_final[:, bStart*fibBun : bStart*fibBun+fibBun])
+	sigmaarrf = n.transpose(flatSigma[:, bStart*fibBun : bStart*fibBun+fibBun])	
+	final_wavelength= n.transpose(log10(wavelength[:, bStart*fibBun : bStart*fibBun+fibBun]))
 
 	hdu0 = pf.PrimaryHDU(xcenterf)
 	hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
@@ -366,10 +373,12 @@ def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,goo
 	hdu18.header.update('PSFPARAM', 'PGH(4,0)', 'Pixelated Gauss-Hermite Order: (4,0)')
 	hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 	fname = outdir + '/spBasisPSF-' + arcid+'.fits'
+	#fname = 'demo1.fits'
+	#print 'reached basis'
 	hdulist.writeto(fname, clobber=True)
 	return (fname)
 
-def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn):
+def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
 	xcenterf  = n.zeros((fibNo,nwavelen))
 	ycenterf  = n.zeros((fibNo,nwavelen))
 	sigmaarrf  = n.zeros((fibNo,nwavelen))
@@ -481,7 +490,9 @@ def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,m
 	hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 
 	fname = outdir + '/spArcPSF-' + arcid +'.fits'
+	#fname = 'demo2.fits'
 	hdulist.writeto(fname, clobber=True)
+	#print 'reached Arcfile'
 	return (fname)
 	
 def dataspArc(spArc_file):
