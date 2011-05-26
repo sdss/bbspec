@@ -51,15 +51,31 @@ HDU 2 : PSFPARAM = 'LogLam'
 
 Note: HDU 1 Y values might correspond to image pixel rows, but they don't have to.
 
-Additional HDUs are specific to the PSFTYPE.  For example, the GAUSS2D
-format has additional HDUs:
+Additional HDUs are specific to the PSFTYPE.
+For a given PSFTYPE, the order of the HDUs will be fixed.
 
+The PSFTYPE='GAUSS2D' format has the additional HDUs:
 HDU 3 : PSFPARAM = 'Amplitude'  Gaussian amplitude (currently fixed to 1.0)
 HDU 4 : PSFPARAM = 'MajorAxis'  Gaussian sigma for the major axis
 HDU 5 : PSFPARAM = 'MinorAxis'  Gaussian sigma for the minor axis
 HDU 6 : PSFPARAM = 'Angle'  Rotation angle of MajorAxis wrt the x-axis
 
-For a given PSFTYPE, the order of the HDUs will be fixed.
+The PSFTYPE='PCA-PIX' format has the additional HDUs:
+HDU 3 : PSFPARAM = 'const'  Pixelized image of PSF
+Optional additional HDUs contain additional terms to the PSF,
+with PSFPARAM='x' for the term linear in x, PSFPARAM='y' for the term
+linear in y, PSFPARAM='xxy' for the term as a function of x*x*y.
+The PSF image for an object centered at (xcen,ycen) defined by
+the sum over all the images in HDU 3 and beyond as follows:
+   PSF = SUM_i{ SUM_j{ Image_ij * ((xcen-0.5*nx)/nx)^i * ((ycen-0.5*ny)/ny)^j
+Therefore, the image is HDU 3 will always represent the PSF in the center
+of the image.
+
+The PSFTYPE='GAUSS-HERMITE' format has the additional HDUs:
+HDU 3 : PSFPARAM = 'sigma'      Gaussian sigma values of basis
+HDU 4 : PSFPARAM = 'PGH(0,0)'   Pixelated Gauss-Hermite Order: (0,0)
+Additional HDUs contain the additional Gauss-Hermite terms (i,j)
+as defined by the PSFPARAM keyword.
 
 
 == Image: sdProc-[br][12]-[FRAME].fits ==
