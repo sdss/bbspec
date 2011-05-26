@@ -112,7 +112,7 @@ class Extractor(object):
 _t0 = None
 def _timeit(comment=None):
     
-    return  ###
+    ### return ###
     
     global _t0
     if _t0 is None:
@@ -147,7 +147,7 @@ class SimpleExtractor(Extractor):
 
     def extract(self):
         """Actually do the extraction"""
-        pass
+        print "Extracting"
         
         if N.all(self._image_ivar == 0.0):
             print >> sys.stderr, "ERROR: input ivar all 0"
@@ -174,8 +174,15 @@ class SimpleExtractor(Extractor):
         ATAx = Ax.T.dot(NiAx)
         _timeit('Make ATAx')
         
-        ATA = N.array(ATAx.todense())        
-        ATAinv = N.linalg.inv(ATA)   
+        ATA = N.array(ATAx.todense())
+        try:
+            ATAinv = N.linalg.inv(ATA)   
+        except N.linalg.LinAlgError, e:
+            print >> sys.stderr, e
+            print >> sys.stderr, "ERROR: Can't invert matrix"
+            self._fill_dummy_values()
+            return
+            
         _timeit('Invert ATA')
 
         #- Solve for flux
