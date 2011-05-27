@@ -58,10 +58,8 @@ for filename in args[0:]:
     i0 = fits[0].header['BUNDLELO'] * 20
     i1 = (fits[0].header['BUNDLEHI']+1) * 20
     
-    print filename, i0, i1
-    
     for ihdu in range(len(fits)):
-        print filename, ihdu, fits[ihdu].data.shape, hdus[ihdu].data.shape
+        ### print filename, ihdu, fits[ihdu].data.shape, hdus[ihdu].data.shape
         if fits[ihdu].data.shape == hdus[ihdu].data.shape:
             hdus[ihdu].data[i0:i1] = fits[ihdu].data[i0:i1]
         else:
