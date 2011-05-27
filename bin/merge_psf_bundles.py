@@ -18,7 +18,7 @@ def blank_psf(template):
     #- Create HDUs with blank data
     hdus = list()
     hdus.append(pyfits.PrimaryHDU(data=N.zeros( data_shape )))
-    for i in range(0, len(template)):
+    for i in range(1, len(template)):
         hdus.append(pyfits.ImageHDU(data=N.zeros(data_shape)))
 
     #- Convert to pyfits HDUList object
