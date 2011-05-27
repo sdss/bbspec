@@ -132,6 +132,8 @@ def load_psf(filename):
         return PSFGauss2D(filename)
     elif psftype == 'GAUSS-HERMITE':
         return PSFGaussHermite2D(filename)
+    elif psftype == 'PCA-PIX':
+        return PSFPixelated(filename)
     else:
         print "I don't know about PSFTYPE %s" % psftype
         raise NotImplementedError
@@ -157,6 +159,13 @@ class PSFPixelated(PSFBase):
         self.param = dict()
         self.param['X'] = fx[0].data
         self.param['Y'] = fx[1].data
+        
+        #- X and Y are swapped
+        if max(self.param['X'][0]) - min(self.param['X'][0]) > 2000:
+            print 'swapping X and Y'
+            self.param['X'] = fx[1].data
+            self.param['Y'] = fx[0].data
+        
         self.param['LogLam'] = fx[2].data
         
         #- Additional headers are a custom format for the pixelated psf
@@ -177,14 +186,15 @@ class PSFPixelated(PSFBase):
         
         x = (x0 - 0.5*self.npix_x) / self.npix_x
         y = (y0 - 0.5*self.npix_y) / self.npix_y
-        
+                        
         #- Generate PSF image at (x,y)
         psfimg = self.psfimage['const'].copy()
         for xy, image in self.psfimage.items():
             #- xy has names like 'x', 'xy', 'xxy', 'xyy'
             nx = xy.count('x')
             ny = xy.count('y')
-            psfimg += x**nx * y**ny * image / 1000**(nx+ny)
+            if nx>0 or ny>0:
+                psfimg += x**nx * y**ny * image
             
         #- Sinc Interpolate
         #- TODO: Check sign of shift
@@ -209,16 +219,16 @@ class PSFPixelated(PSFBase):
         
         if ix+nx/2 > self.npix_x:
             dx = self.npix_x - (ix+nx/2)
-            psfimage = psfimg[:, :dx]
+            psfimg = psfimg[:, :dx]
             
         if iy+ny/2 > self.npix_y:
             dy = self.npix_y - (iy+ny/2)
-            psfimage = psfimg[:, :dy]
+            psfimg = psfimg[:, :dy]
         
         xslice = slice(xmin, xmax+1)
         yslice = slice(ymin, ymax+1)
         
-        return xslice, yslice, image
+        return xslice, yslice, psfimg
 
     #- Utility functions for sinc shifting pixelated PSF images
     def _sincfunc(self, x, dx):
