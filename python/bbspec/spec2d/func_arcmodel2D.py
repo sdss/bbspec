@@ -14,11 +14,8 @@ y1 = -5
 y2 =  6
 x = n.arange(x1,x2,1) 
 y = n.arange(y1,y2,1)
-Tfib =  500
 fibNo = 500
 nwavelen = 65
-loopwave =  65
-#loopbund = 
 fibBun = 20
 xpoints = 4114
 ypoints = 4128
@@ -165,24 +162,16 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 		reqwave = array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
 
 	# loop to get the value of PSF parameters at all wavelengths		    
-	for i_fib in range(0, fibBun):
-		for i_plot in range(1, len(mm)):
-			wavecons   =  wavelength[:, i_bund*fibBun + i_fib]
-			param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
-			z = n.polyfit(good_wavelength[reqwave], param, degree)
-			p = n.poly1d(z)
-			coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
+		for i_fib in range(0, fibBun):
+			for i_plot in range(1, len(mm)):
+				wavecons   =  wavelength[:, i_bund*fibBun + i_fib]
+				param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
+				z = n.polyfit(good_wavelength[reqwave], param, degree)
+				p = n.poly1d(z)
+				coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
 	
-	#- Add bundle range to arcid for output name		
-	outid = arcid
-	if bStart != 0 or bEnd != 24:
-		if bStart == bEnd:
-			outid += '-%d' % bStart
-		else:
-			outid += '-%d-%d' % (bStart, bEnd)
-	
-	PSFArc = createPSFArc(outdir, outid, GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
-	PSFBasis = createPSFBasis(outdir, outid, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
+	PSFArc = createPSFArc(outdir, arcid, GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
+	PSFBasis = createPSFBasis(outdir, arcid,  coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
 	return (PSFArc , PSFBasis)
 
 # Function creates basis function at known wavelengths of arc-frames
@@ -382,7 +371,7 @@ def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,goo
 	fname = outdir + '/spBasisPSF-' + arcid+'.fits'
 	#fname = 'demo1.fits'
 	#print 'reached basis'
-	hdulist.writeto(fname, clobber=True)
+	#hdulist.writeto(fname, clobber=True)
 	return (fname)
 
 def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
@@ -498,7 +487,7 @@ def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,m
 
 	fname = outdir + '/spArcPSF-' + arcid +'.fits'
 	#fname = 'demo2.fits'
-	hdulist.writeto(fname, clobber=True)
+	#hdulist.writeto(fname, clobber=True)
 	#print 'reached Arcfile'
 	return (fname)
 	
