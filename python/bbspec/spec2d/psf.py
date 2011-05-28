@@ -63,6 +63,18 @@ class PSFBase(object):
         """
         raise NotImplementedError
     
+    def x(self, ispec, iflux):
+        """returns CCD X centroid of spectrum[ispec, iflux]"""
+        return self.param['X'][ispec, iflux]
+    
+    def y(self, ispec, iflux):
+        """returns CCD Y centroid of spectrum[ispec, iflux]"""
+        return self.param['Y'][ispec, iflux]
+        
+    def loglam(self, ispec, iflux):
+        """returns log10(wavelength) of spectrum[ispec, iflux]"""
+        return self.param['LogLam'][ispec, iflux]
+    
     def getA(self):
         """
         return dense matrix A[npix, nspec*nflux] where each column is the
@@ -96,7 +108,7 @@ class PSFBase(object):
         
     def spec2pix(self, spectra):
         """
-        Project spectra through psf to product image
+        Project spectra through psf to produce image
         
         Input: spectra[nspec, nflux]
         Output: image[npix_y, npix_x]
@@ -208,9 +220,9 @@ class PSFPixelated(PSFBase):
         iy = int(round(y0))
         
         xmin = max(0, ix-nx/2)
-        xmax = min(self.npix_x, ix+nx/2+1)
+        xmax = min(self.npix_x, ix+nx/2)
         ymin = max(0, iy-ny/2)
-        ymax = min(self.npix_y, iy+ny/2+1)
+        ymax = min(self.npix_y, iy+ny/2)
                 
         if ix < nx/2:
             psfimg = psfimg[:, nx/2-ix:]
@@ -240,14 +252,31 @@ class PSFPixelated(PSFBase):
             xx[len(x)/2] = 1.0
             return xx
 
-    def _sincshift(self, image, dx, dy):
+    def _sincshift(self, image, dx, dy): 
         sincrad = 10
         s = N.arange(-sincrad, sincrad+1)
         sincx = self._sincfunc(s, dx)
+
+        #- If we're shifting just in x, do faster 1D convolution with wraparound
+        #- WARNING: can introduce edge effects if PSF isn't nearly 0 at edge
+        if abs(dy) < 1e-6:
+            newimage = scipy.signal.convolve(image.ravel(), sincx, mode='same')
+            return newimage.reshape(image.shape)
+        
         sincy = self._sincfunc(s, dy)
         kernel = N.outer(sincy, sincx)
         newimage = scipy.signal.convolve2d(image, kernel, mode='same')
         return newimage
+
+"""
+from bbspec.spec2d.psf import load_psf
+psf = load_psf('spBasisPSF-r1-00115982.fits')
+image = N.zeros((500, 500))
+xs, ys, pix = psf.pix(0,200)
+image[ys, xs] = pix
+imshow(image, interpolation='nearest')
+
+"""
 
 #-------------------------------------------------------------------------
 
