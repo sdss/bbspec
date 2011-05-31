@@ -1,7 +1,7 @@
 import numpy as n
 import pyfits as pf
 
-paramfile  = 'spBasisPSF-r1-00122445.fits'
+paramfile  = 'spBasisPSF-r1-00122444.fits'
 
 data = pf.open(paramfile)
 theta1 = data[5].data

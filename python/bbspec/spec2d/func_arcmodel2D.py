@@ -19,6 +19,7 @@ nwavelen = 65
 fibBun = 20
 xpoints = 4114
 ypoints = 4128
+degree =  3
 nbund =  25
 yvalues = n.arange(0,ypoints,1)
 #bStart = 2 # starting bundle
@@ -60,7 +61,7 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 	ngoodwave=len(good_wavelength)
 	chi_sqrd = n.zeros((nwavelen,nbund,1))
 
-	coeffAll  = n.zeros((fibBun,ypoints,15,15))
+	coeffAll  = n.zeros((fibBun,degree + 1,15,15))
 	xcenter  = n.zeros((nwavelen,nbund,fibBun))
 	ycenter  = n.zeros((nwavelen,nbund,fibBun))
 	sigma  = n.zeros((nwavelen,nbund,fibBun))
@@ -156,7 +157,7 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 		ycenter[i_actwave,i_bund,:]  = ycenarr
 		sigma[i_actwave,i_bund,:]  = sigmaarr 
 		
-		degree = 3
+		#degree = 3
 		
 		# wavelength indexes which do not have outliers 
 		reqwave = array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
@@ -168,7 +169,7 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 				param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
 				z = n.polyfit(good_wavelength[reqwave], param, degree)
 				p = n.poly1d(z)
-				coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = p(wavecons)
+				coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
 	
 	PSFArc = createPSFArc(outdir, arcid, GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
 	PSFBasis = createPSFBasis(outdir, arcid,  coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
@@ -263,21 +264,21 @@ def calparam(B,N,p1):
 	
 # write to FITS file
 def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
-	theta0 = n.zeros((fibBun,ypoints))
-	theta1 = n.zeros((fibBun,ypoints))
-	theta2 = n.zeros((fibBun,ypoints))
-	theta3 = n.zeros((fibBun,ypoints))
-	theta4 = n.zeros((fibBun,ypoints))
-	theta5 = n.zeros((fibBun,ypoints))
-	theta6 = n.zeros((fibBun,ypoints))
-	theta7 = n.zeros((fibBun,ypoints))
-	theta8 = n.zeros((fibBun,ypoints))
-	theta9 = n.zeros((fibBun,ypoints))
-	theta10 = n.zeros((fibBun,ypoints))
-	theta11 = n.zeros((fibBun,ypoints))
-	theta12 = n.zeros((fibBun,ypoints))
-	theta13 = n.zeros((fibBun,ypoints))
-	theta14 = n.zeros((fibBun,ypoints))
+	theta0 = n.zeros((fibBun,degree+1))
+	theta1 = n.zeros((fibBun,degree+1))
+	theta2 = n.zeros((fibBun,degree+1))
+	theta3 = n.zeros((fibBun,degree+1))
+	theta4 = n.zeros((fibBun,degree+1))
+	theta5 = n.zeros((fibBun,degree+1))
+	theta6 = n.zeros((fibBun,degree+1))
+	theta7 = n.zeros((fibBun,degree+1))
+	theta8 = n.zeros((fibBun,degree+1))
+	theta9 = n.zeros((fibBun,degree+1))
+	theta10 = n.zeros((fibBun,degree+1))
+	theta11 = n.zeros((fibBun,degree+1))
+	theta12 = n.zeros((fibBun,degree+1))
+	theta13 = n.zeros((fibBun,degree+1))
+	theta14 = n.zeros((fibBun,degree+1))
 	final_wavelength  = n.zeros((fibBun,ypoints))
 
 	theta0  = coeffAll[: , :,mm[1],nn[1]]
