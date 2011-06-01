@@ -72,11 +72,11 @@ class PSFBase(object):
     def y(self, ispec, iflux):
         """returns CCD Y centroid of spectrum[ispec, iflux]"""
         return self.param['Y'][ispec, iflux]
-        
+
     def loglam(self, ispec, iflux):
         """returns log10(wavelength) of spectrum[ispec, iflux]"""
         return self.param['LogLam'][ispec, iflux]
-    
+
     def getA(self):
         """
         return dense matrix A[npix, nspec*nflux] where each column is the
@@ -107,6 +107,96 @@ class PSFBase(object):
         vv = A[yy, xx]
         Ax = scipy.sparse.coo_matrix((vv, (yy, xx)), shape=A.shape)
         return Ax.tocsr()
+        
+    # def getAx(self):
+    #     """
+    #     Perhaps a more readable version of getA?
+    #     """
+    #     A = N.zeros( (self.nspec, self.nflux, self.npix_y, self.npix_x) )
+    #     for i in range(self.nspec):
+    #         for j in range(self.nflux):
+    #             xslice, yslice, pix = self.pix(i, j)
+    #             A[i, j, yslice, xslice] = pix
+    # 
+    #     return A.reshape((self.nspec*self.nflux, self.npix_y*self.npix_x)).T
+        
+    def getAsub(self, ispecmin, ispecmax, ifluxmin, ifluxmax):
+        """
+        Return xslice, yslice, A for a subset of spectra and flux bins
+        
+        xslice and yslice refer to the pixel-space slices touched by
+        the PSFs from the requested spectra.
+        """
+        
+        nspec = ispecmax - ispecmin
+        nflux = ifluxmax - ifluxmin
+        
+        #- First pass: get the pixel cutouts and slice ranges
+        cutouts = dict()
+        for i in range(ispecmin, ispecmax):
+            for j in range(ifluxmin, ifluxmax):
+                cutouts[(i,j)] = self.pix(i, j)  #- xslice, yslice, pix
+
+        #- Determine pixel min and max boundaries
+        xmin = min([tmp[0].start for tmp in cutouts.values()])
+        xmax = max([tmp[0].stop  for tmp in cutouts.values()])
+        ymin = min([tmp[1].start for tmp in cutouts.values()])
+        ymax = max([tmp[1].stop  for tmp in cutouts.values()])        
+        npix_x = xmax - xmin
+        npix_y = ymax - ymin
+        
+        #- New version: purposefully restrict pixel space
+        xmin += 15
+        xmax -= 15
+        ymin += 15
+        ymax -= 15
+        npix_x = xmax - xmin
+        npix_y = ymax - ymin
+        
+        #- Generate A
+        A = N.zeros( (npix_y*npix_x, nspec*nflux) )
+        tmp = N.zeros( (self.npix_y, self.npix_x) )
+        for i in range(ispecmin, ispecmax):
+            for j in range(ifluxmin, ifluxmax):
+                #- Get subimage and index slices
+                xslice, yslice, pix = self.pix(i, j)
+                tmp[yslice, xslice] = pix
+                
+                ij = (i-ispecmin)*nflux + (j-ifluxmin)
+                A[:, ij] = tmp[ymin:ymax, xmin:xmax].ravel()
+                tmp[yslice, xslice] = 0.0
+        
+        #- Define pixel slices which match the sub A matrix
+        xslice = slice(xmin, xmax)
+        yslice = slice(ymin, ymax)
+        
+        return xslice, yslice, A
+        
+    def getAx(self, speclo, spechi, fluxlo, fluxhi, xlo, xhi, ylo, yhi):
+        """
+        Return A for a subset of spectra and flux bins
+        """
+        
+        nspec = spechi - speclo
+        nflux = fluxhi - fluxlo
+        nx = xhi - xlo
+        ny = yhi - ylo
+        
+        #- Generate A
+        A = N.zeros( (ny*nx, nspec*nflux) )
+        tmp = N.zeros( (self.npix_y, self.npix_x) )  #- full fat version
+        for ispec in range(speclo, spechi):
+            for iflux in range(fluxlo, fluxhi):
+                #- Get subimage and index slices
+                xslice, yslice, pix = self.pix(ispec, iflux)
+                tmp[yslice, xslice] = pix
+                
+                #- put them into sub-region in A
+                ij = (ispec-speclo)*nflux + (iflux-fluxlo)
+                A[:, ij] = tmp[ymin:ymax, xmin:xmax].ravel()
+                tmp[yslice, xslice] = 0.0
+        
+        return A
         
     def spec2pix(self, spectra):
         """
@@ -174,7 +264,7 @@ class PSFPixelated(PSFBase):
         self.param['X'] = fx[0].data
         self.param['Y'] = fx[1].data
         
-        #- X and Y are swapped
+        #- check if X and Y are swapped
         if max(self.param['X'][0]) - min(self.param['X'][0]) > 2000:
             print 'swapping X and Y'
             self.param['X'] = fx[1].data
@@ -183,11 +273,10 @@ class PSFPixelated(PSFBase):
         self.param['LogLam'] = fx[2].data
         
         #- Additional headers are a custom format for the pixelated psf
-        self.psfimage = dict()
-        for i in range(3, len(fx)):
-            name = fx[i].header['PSFPARAM'].strip().lower()
-            self.psfimage[name] = fx[i].data
-        fx.close()
+        self.nexp    = fx[3].data  #- icoeff xexp yexp
+        self.xyscale = fx[4].data  #- ifiber igroup x0 xscale y0 yscale
+        self.psfimage = fx[5].data #- [igroup, icoeff, iy, ix]
+        
         
     def pix(self, ispec, iflux):
         """
@@ -195,32 +284,37 @@ class PSFPixelated(PSFBase):
         
         returns xslice, yslice, pixels[yslice, xslice]
         """
-        x0 = self.param['X'][ispec, iflux]
-        y0 = self.param['Y'][ispec, iflux]
+        #- Get fiber group and scaling factors for this spectrum
+        igroup = self.xyscale['igroup'][ispec]
+        x0     = self.xyscale['x0'][ispec]
+        xscale = self.xyscale['xscale'][ispec]
+        y0     = self.xyscale['y0'][ispec]
+        yscale = self.xyscale['yscale'][ispec]
         
-        x = (x0 - 0.5*self.npix_x) / self.npix_x
-        y = (y0 - 0.5*self.npix_y) / self.npix_y
-                        
+        #- Get x and y centroid for this spectrum and flux bin
+        x = self.param['X'][ispec, iflux]
+        y = self.param['Y'][ispec, iflux]
+        
+        #- Rescale units
+        xx = xscale * (x - x0)
+        yy = xscale * (y - x0)
+        
         #- Generate PSF image at (x,y)
-        psfimg = self.psfimage['const'].copy()
-        for xy, image in self.psfimage.items():
-            #- xy has names like 'x', 'xy', 'xxy', 'xyy'
-            nx = xy.count('x')
-            ny = xy.count('y')
-            if nx>0 or ny>0:
-                psfimg += x**nx * y**ny * image
-
-            
+        psfimage = N.zeros(self.psfimage.shape[2:4])
+        for i in range(self.psfimage.shape[1]):
+            nx = self.nexp['xexp'][i]
+            ny = self.nexp['yexp'][i]
+            psfimage += xx**nx * yy**ny * self.psfimage[igroup, i]
+                                
         #- Sinc Interpolate
-        #- TODO: Check sign of shift
-        dx = int(x0) - x0
-        dy = int(y0) - y0
-        psfimg = self._sincshift(psfimg, dx, dy)
+        dx = int(x) - x
+        dy = int(y) - y
+        psfimage = self._sincshift(psfimage, dx, dy)
         
         #- Check boundaries
-        ny, nx = psfimg.shape
-        ix = int(round(x0))
-        iy = int(round(y0))
+        ny, nx = psfimage.shape
+        ix = int(round(x))
+        iy = int(round(y))
         
         xmin = max(0, ix-nx/2)
         xmax = min(self.npix_x, ix+nx/2)
@@ -228,22 +322,22 @@ class PSFPixelated(PSFBase):
         ymax = min(self.npix_y, iy+ny/2)
                 
         if ix < nx/2:
-            psfimg = psfimg[:, nx/2-ix:]
+            psfimage = psfimage[:, nx/2-ix:]
         if iy < ny/2:
-            psfimg = psfimg[ny/2-iy:, :]
+            psfimage = psfimage[ny/2-iy:, :]
         
         if ix+nx/2 > self.npix_x:
             dx = self.npix_x - (ix+nx/2)
-            psfimg = psfimg[:, :dx]
+            psfimage = psfimage[:, :dx]
             
         if iy+ny/2 > self.npix_y:
             dy = self.npix_y - (iy+ny/2)
-            psfimg = psfimg[:, :dy]
+            psfimage = psfimage[:, :dy]
         
         xslice = slice(xmin, xmax+1)
         yslice = slice(ymin, ymax+1)
         
-        return xslice, yslice, psfimg
+        return xslice, yslice, psfimage
 
     #- Utility functions for sinc shifting pixelated PSF images
     def _sincfunc(self, x, dx):
@@ -376,8 +470,8 @@ class PSFGaussHermite2D(PSFBase):
         xcen = self.param['X'][ispec, iflux]
         ycen = self.param['Y'][ispec, iflux]
         sigma = self.param['sigma'][ispec, iflux]
-	logwave = self.param['LogLam']       
-	# Set half-width and determine indexing variables:
+        logwave = self.param['LogLam']       
+        # Set half-width and determine indexing variables:
         hw = int(N.ceil(5.*sigma))
         xcr = int(round(xcen))
         ycr = int(round(ycen))
@@ -404,14 +498,14 @@ class PSFGaussHermite2D(PSFBase):
         #     xfuncs[iorder] = pgh(xbase, m=iorder, xc=dxcen, sigma=sigma)
         #     yfuncs[iorder] = pgh(ybase, m=iorder, xc=dycen, sigma=sigma)
          
-   	#- Faster
+        #- Faster
         xfuncs = self.pgh.eval(xbase, xc=dxcen, sigma=sigma)
         yfuncs = self.pgh.eval(ybase, xc=dycen, sigma=sigma)
             
         # Build the output image:
         outimage = N.zeros((ny, nx), dtype=float)
 
-	waverange = N.power(10,logwave)		
+        waverange = N.power(10,logwave)		
         
         #for iorder in range(len(self.ordernames)):
         # 	outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
@@ -420,12 +514,12 @@ class PSFGaussHermite2D(PSFBase):
         # Corrected to include new fits file struture which does not store the actual value of PSF parameters but the 
         # polynomial coefficients from which they can be obtained.
         for iorder in range(len(self.ordernames)):
-		fitcoeff = self.param[self.ordernames[iorder]][ispec, :]		
-		coeff  = N.poly1d(fitcoeff) 
-		coeffVal = coeff(waverange)
-		outimage += coeffVal[ispec, iflux] * \
+            fitcoeff = self.param[self.ordernames[iorder]][ispec, :]		
+            coeff  = N.poly1d(fitcoeff) 
+            coeffVal = coeff(waverange)
+            outimage += coeffVal[ispec, iflux] * \
                         N.outer(yfuncs[self.nvalues[iorder]],xfuncs[self.mvalues[iorder]])
 
-	print outimage	
+        # print outimage	
         # Pack up and return:
         return xslice, yslice, outimage
