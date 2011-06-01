@@ -13,11 +13,11 @@ from bbspec.spec2d.boltonfuncs import PGH
 from time import time
 
 #- Turn of complex -> real warnings in sinc interpolation
-#import warnings 
-#try:
-#	warnings.simplefilter("ignore", N.ComplexWarning)
-#except AttributeError:
-#	pass
+import warnings 
+try:
+	warnings.simplefilter("ignore", N.ComplexWarning)
+except   AttributeError:
+	pass
 #- Checkpoint for timing tests
 t0 = time()
 def checkpoint(comment=None):
