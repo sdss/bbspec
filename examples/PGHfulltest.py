@@ -7,7 +7,7 @@ m.interactive(True)
 from matplotlib import pyplot as p
 from bbspec.spec2d import psf
 
-f = 'spBasisPSF-r1-00122444.fits'
+f = 'spBasisPSFold-r1-00122444.fits'
 
 myargs = {'interpolation': 'nearest', 'origin': 'lower', 'hold': False}
 
