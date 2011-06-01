@@ -211,14 +211,14 @@ class arcmodel2D:
             sigmaarr[i_k] = sigmaF
             starty= iceny-y1im
             startx= icenx-x1im
-            xPSF = n.zeros((len(x),1))
-            yPSF = n.zeros((len(y),1))
+            xPSF = n.zeros((len(arcmodel2D.x),1))
+            yPSF = n.zeros((len(arcmodel2D.y),1))
             #xPSF[:,0] = GH.pgh(x=arcmodel2D.x, xc = cenF, sigma = sigmaF ,m = mor)
             xPSF[:,0] = GH.pgh(arcmodel2D.x, mor, cenF, sigmaF)
             yPSF[:,0] = GH.pgh(arcmodel2D.y, nor, cenA, sigmaF)
             out = n.outer(yPSF,xPSF)
             datacenterval[i_k,0] = rowimage[starty,startx]
-            basisfunc[0,i_k,starty+y[0]:(starty+y[len(y)-1]+1),startx+x[0]:(startx+x[len(x)-1]+1)] = out
+            basisfunc[0,i_k,starty+arcmodel2D.y[0]:(starty+arcmodel2D.y[len(arcmodel2D.y)-1]+1),startx+arcmodel2D.x[0]:(startx+arcmodel2D.x[len(arcmodel2D.x)-1]+1)] = out
             func_n_k = interpolate.interp1d(arcmodel2D.yvalues,fiberflat[fibcons[i_k],:])
             n_kVal = func_n_k(ypix)
             # relative fiber throughput (n_k) taken as 1
