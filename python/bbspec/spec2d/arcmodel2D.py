@@ -6,7 +6,7 @@ from scipy import special
 from scipy import interpolate
 from scipy import *
 
-class arcmodel2d:
+class arcmodel2D:
 
     x = n.arange(-5,6,1) 
     y = n.arange(-5,6,1)
@@ -22,6 +22,8 @@ class arcmodel2d:
     #bEnd = 2 # ending bundle
 
     def __init__(self): pass
+
+    def info(self): print 'my name is arcmodel2D'
 
     #def model_arc(arcid, flatid, indir = '.', outdir = '.'):
     def model_arc(self, arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
@@ -646,4 +648,3 @@ class arcmodel2d:
         #fiber to fiber variatons from fiberflats
         fiberflat = h_spFlat[0].data
         return(fiberflat, xpos_final, flatSigma)
-        
