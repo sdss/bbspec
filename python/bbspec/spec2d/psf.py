@@ -13,11 +13,11 @@ from bbspec.spec2d.boltonfuncs import PGH
 from time import time
 
 #- Turn of complex -> real warnings in sinc interpolation
-import warnings 
-try:
-	warnings.simplefilter("ignore", N.ComplexWarning)
-except AttributeError:
-	pass
+#import warnings 
+#try:
+#	warnings.simplefilter("ignore", N.ComplexWarning)
+#except AttributeError:
+#	pass
 #- Checkpoint for timing tests
 t0 = time()
 def checkpoint(comment=None):
@@ -209,6 +209,7 @@ class PSFPixelated(PSFBase):
             ny = xy.count('y')
             if nx>0 or ny>0:
                 psfimg += x**nx * y**ny * image
+
             
         #- Sinc Interpolate
         #- TODO: Check sign of shift
@@ -375,7 +376,8 @@ class PSFGaussHermite2D(PSFBase):
         xcen = self.param['X'][ispec, iflux]
         ycen = self.param['Y'][ispec, iflux]
         sigma = self.param['sigma'][ispec, iflux]
-        # Set half-width and determine indexing variables:
+	logwave = self.param['LogLam']       
+	# Set half-width and determine indexing variables:
         hw = int(N.ceil(5.*sigma))
         xcr = int(round(xcen))
         ycr = int(round(ycen))
@@ -402,16 +404,28 @@ class PSFGaussHermite2D(PSFBase):
         #     xfuncs[iorder] = pgh(xbase, m=iorder, xc=dxcen, sigma=sigma)
         #     yfuncs[iorder] = pgh(ybase, m=iorder, xc=dycen, sigma=sigma)
          
-   		#- Faster
+   	#- Faster
         xfuncs = self.pgh.eval(xbase, xc=dxcen, sigma=sigma)
         yfuncs = self.pgh.eval(ybase, xc=dycen, sigma=sigma)
             
         # Build the output image:
         outimage = N.zeros((ny, nx), dtype=float)
+
+	waverange = N.power(10,logwave)		
+        
+        #for iorder in range(len(self.ordernames)):
+        # 	outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
+        #             N.outer(yfuncs[self.nvalues[iorder]], xfuncs[self.mvalues[iorder]])
+
+        # Corrected to include new fits file struture which does not store the actual value of PSF parameters but the 
+        # polynomial coefficients from which they can be obtained.
         for iorder in range(len(self.ordernames)):
-            outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
-                        N.outer(yfuncs[self.nvalues[iorder]],
-                                xfuncs[self.mvalues[iorder]])
+		fitcoeff = self.param[self.ordernames[iorder]][ispec, :]		
+		coeff  = N.poly1d(fitcoeff) 
+		coeffVal = coeff(waverange)
+		outimage += coeffVal[ispec, iflux] * \
+                        N.outer(yfuncs[self.nvalues[iorder]],xfuncs[self.mvalues[iorder]])
+
+	print outimage	
         # Pack up and return:
         return xslice, yslice, outimage
-

@@ -372,7 +372,7 @@ def createPSFBasis(outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,goo
 	fname = outdir + '/spBasisPSF-' + arcid+'.fits'
 	#fname = 'demo1.fits'
 	#print 'reached basis'
-	#hdulist.writeto(fname, clobber=True)
+	hdulist.writeto(fname, clobber=True)
 	return (fname)
 
 def createPSFArc(outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
