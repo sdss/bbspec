@@ -1,10 +1,7 @@
 import numpy as n
 import pyfits as pf
-from scipy import linalg 
 from bbspec.spec2d import boltonfuncs as GH
-from scipy import special
-from scipy import interpolate
-from scipy import *
+from scipy import special,interpolate,where,linalg
 
 class arcmodel2D:
 
