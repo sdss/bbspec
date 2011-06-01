@@ -162,7 +162,7 @@ class arcmodel2D:
             #arcmodel2D.degree = 3
             
             # wavelength indexes which do not have outliers 
-            reqwave = array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
+            reqwave = n.array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
 
         # loop to get the value of PSF parameters at all wavelengths		    
             for i_fib in range(0, arcmodel2D.fibBun):
@@ -302,12 +302,12 @@ class arcmodel2D:
         a = n.arange(0,arcmodel2D.ypoints, dtype=float)
         b=n.transpose(a)
         q = b.repeat(arcmodel2D.fibBun)
-        a = reshape(q, (arcmodel2D.ypoints,arcmodel2D.fibBun))
+        a = n.reshape(q, (arcmodel2D.ypoints,arcmodel2D.fibBun))
         ycenterf  = n.transpose(a)
-            
+        
         xcenterf = n.transpose(xpos_final[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])
         sigmaarrf = n.transpose(flatSigma[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])	
-        final_wavelength= n.transpose(log10(wavelength[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun]))
+        final_wavelength= n.transpose(n.log10(wavelength[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun]))
 
         hdu0 = pf.PrimaryHDU(xcenterf)
         hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
@@ -418,7 +418,7 @@ class arcmodel2D:
             xcenterf[:,i_wave]  = n.ravel(xcenter[i_wave, :, :])
             ycenterf[:,i_wave]  = n.ravel(ycenter[i_wave, :, :])
             
-            final_wavelength[:,i_wave] = (log10(good_wavelength[i_wave])).repeat(arcmodel2D.fibNo)
+            final_wavelength[:,i_wave] = (n.log10(good_wavelength[i_wave])).repeat(arcmodel2D.fibNo)
             
             sigmaarrf[:,i_wave]  = n.ravel(sigma[i_wave, :, :])
 
