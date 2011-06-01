@@ -18,38 +18,43 @@ class arcmodel2D:
     #bStart = 2 # starting bundle
     #bEnd = 2 # ending bundle
 
-    def __init__(self): pass
+    def __init__(self,indir = '.', outdir = '.'):
+        self.indir = indir
+        self.outdir = outdir
+    
+    def setarc_flat(self,arcid,flatid):
+        self.arcid = arcid
+        self.flatid = flatid
+        
+        spArc_file = self.indir + '/spArc-' + self.arcid + '.fits.gz' 
+        spFlat_file = self.indir + '/spFlat-' + self.flatid + '.fits.gz' 
+        data_file = self.indir + '/sdProc-' + self.arcid + '.fits' 
+        
+        self.h_spArc = pf.open(spArc_file)
+        self.h_spFlat = pf.open(spFlat_file)
+        self.data = pf.open(data_file)
 
-    def info(self): print 'my name is arcmodel2D'
+    def close(self):
+        self.h_spArc.close()
+        self.h_spFlat.close()
+        self.data.close()
 
-    #def model_arc(arcid, flatid, indir = '.', outdir = '.'):
-    def model_arc(self, arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
+    def model_arc(self, bStart, bEnd):
         bStart = int(bStart)
         bEnd = int(bEnd)
         loopBund =  bEnd - bStart + 1
         #- make floating point errors fatal (fail early, fail often)
         n.seterr(all='raise')
 
-        spArc_file = indir + '/spArc-' + arcid + '.fits.gz' 
-        spFlat_file = indir + '/spFlat-' + flatid + '.fits.gz' 
-        data_file = indir + '/sdProc-' + arcid + '.fits' 
-
-            #spArc_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spArc-r1-00115982.fits.gz'
-            #spFlat_file = '/uufs/astro.utah.edu/common/astro_data2/SDSS3/BOSS/bossredux/v5_4_14/4010/spFlat-r1-00115981.fits.gz'
-        #image_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/imageR1ver2.fits'
-        #invvr_file = '/uufs/astro.utah.edu/common/home/u0657636/final codes/sdssproc_files/invrR1ver2.fits'
-        
-        # Data & invvar from sdR files 
-        data = pf.open(data_file)
-        biasSubImg = data[0].data
-        invvr = data[1].data
-        data.close()
+        # Data & invvar from sdR files
+        biasSubImg = self.data[0].data
+        invvr = self.data[1].data
 
         # Data from spArc files
-        [goodwaveypos, good_wavelength, wavelength, arcSigma] = self.dataspArc(spArc_file)
+        [goodwaveypos, good_wavelength, wavelength, arcSigma] = self.dataspArc()
 
         # Data from spFlat files
-        [fiberflat, xpos_final, flatSigma] = self.dataspFlat(spFlat_file)
+        [fiberflat, xpos_final, flatSigma] = self.dataspFlat()
 
         # allocating space for variables
         arcmodel2D.yvalues = n.arange(0,arcmodel2D.ypoints,1)
@@ -168,8 +173,8 @@ class arcmodel2D:
                     p = n.poly1d(z)
                     coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
         
-        PSFArc = self.createPSFArc(outdir, arcid, GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
-        PSFBasis = self.createPSFBasis(outdir, arcid,  coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
+        PSFArc = self.createPSFArc(GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
+        PSFBasis = self.createPSFBasis(coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
         return (PSFArc , PSFBasis)
 
     # Function creates basis function at known wavelengths of arc-frames
@@ -260,7 +265,7 @@ class arcmodel2D:
         return(theta,t2,l1,t1,t2)
         
     # write to FITS file
-    def createPSFBasis(self, outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
+    def createPSFBasis(self, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
         theta0 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta1 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta2 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
@@ -366,13 +371,13 @@ class arcmodel2D:
         hdu18 = pf.ImageHDU(theta14)
         hdu18.header.update('PSFPARAM', 'PGH(4,0)', 'Pixelated Gauss-Hermite Order: (4,0)')
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
-        fname = outdir + '/spBasisPSF-' + arcid+'.fits'
+        fname = self.outdir + '/spBasisPSF-' + self.arcid+'.fits'
         #fname = 'demo1.fits'
         #print 'reached basis'
         hdulist.writeto(fname, clobber=True)
         return (fname)
 
-    def createPSFArc(self, outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
+    def createPSFArc(self, GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
         xcenterf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
         ycenterf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
         sigmaarrf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
@@ -483,22 +488,21 @@ class arcmodel2D:
 
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 
-        fname = outdir + '/spArcPSF-' + arcid +'.fits'
+        fname = self.outdir + '/spArcPSF-' + self.arcid +'.fits'
         #fname = 'demo2.fits'
         #hdulist.writeto(fname, clobber=True)
         #print 'reached Arcfile'
         return (fname)
         
-    def dataspArc(self, spArc_file):
-        h_spArc = pf.open(spArc_file)
+    def dataspArc(self):
 
         # Number of fibers 
-        image = h_spArc[0].data
+        image = self.h_spArc[0].data
         nfib = n.shape(image)[0]
         ndatapt = n.shape(image)[1]
 
         # y-sigma values
-        ysigma = h_spArc[4].data
+        ysigma = self.h_spArc[4].data
         xmin =  ysigma.field(1)  
         xmax =  ysigma.field(2)
         coeff = ysigma.field(3)
@@ -530,7 +534,7 @@ class arcmodel2D:
         arcSigma =Ysig
         
         #wavelength value at each Y-center
-        waveset 	= h_spArc[2].data
+        waveset 	= self.h_spArc[2].data
         xminwave 	= waveset.field(1)
         xmaxwave 	= waveset.field(2)
         coeffwave 	= waveset.field(3)
@@ -562,23 +566,22 @@ class arcmodel2D:
         wavelength = n.power(10,wavelength)
         
         # good wavelengths of Arc lamps 
-        good_lambda_val = h_spArc[1].data
+        good_lambda_val = self.h_spArc[1].data
         good_wavelength = good_lambda_val[:,0]
         wavenum = n.shape(good_lambda_val)[0]
         lambdadim2 = n.shape(good_lambda_val)[1]
         goodwaveypos = good_lambda_val[0:wavenum, 1:lambdadim2]
         return(goodwaveypos, good_wavelength, wavelength, arcSigma)
 
-    def dataspFlat(self, spFlat_file):
-        h_spFlat = pf.open(spFlat_file)
+    def dataspFlat(self):
         
         # Number of fibers 
-        image = h_spFlat[0].data
+        image = self.h_spFlat[0].data
         nfib = n.shape(image)[0]
         ndatapt = n.shape(image)[1] 
         
         # X- sigma 
-        sigma	=  h_spFlat[3].data
+        sigma	=  self.h_spFlat[3].data
         xminSig 	=  sigma.field(1)
         xmaxSig 	=  sigma.field(2)
         coeffXSig 	=  sigma.field(3)
@@ -610,8 +613,7 @@ class arcmodel2D:
         flatSigma = Xsig
 
         # X-centers
-        h_spFlat = pf.open(spFlat_file)
-        peakPos = h_spFlat[1].data
+        peakPos = self.h_spFlat[1].data
         xmin =  peakPos.field(1)
         xmax =  peakPos.field(2)
         coeffxpos = peakPos.field(3)
@@ -643,5 +645,5 @@ class arcmodel2D:
 
 
         #fiber to fiber variatons from fiberflats
-        fiberflat = h_spFlat[0].data
+        fiberflat = self.h_spFlat[0].data
         return(fiberflat, xpos_final, flatSigma)
