@@ -55,24 +55,24 @@ class arcmodel2D:
         [fiberflat, xpos_final, flatSigma] = self.dataspFlat(spFlat_file)
 
         # allocating space for variables
-        arcmodel2d.yvalues = n.arange(0,arcmodel2d.ypoints,1)
-        GHparam = n.zeros((arcmodel2d.nwavelen,arcmodel2d.nbund,15,15))
-        fib = n.arange(0,arcmodel2d.fibNo,1) 
+        arcmodel2D.yvalues = n.arange(0,arcmodel2D.ypoints,1)
+        GHparam = n.zeros((arcmodel2D.nwavelen,arcmodel2D.nbund,15,15))
+        fib = n.arange(0,arcmodel2D.fibNo,1) 
         ngoodwave=len(good_wavelength)
-        chi_sqrd = n.zeros((arcmodel2d.nwavelen,arcmodel2d.nbund,1))
+        chi_sqrd = n.zeros((arcmodel2D.nwavelen,arcmodel2D.nbund,1))
 
-        coeffAll  = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree + 1,15,15))
-        xcenter  = n.zeros((arcmodel2d.nwavelen,arcmodel2d.nbund,arcmodel2d.fibBun))
-        ycenter  = n.zeros((arcmodel2d.nwavelen,arcmodel2d.nbund,arcmodel2d.fibBun))
-        sigma  = n.zeros((arcmodel2d.nwavelen,arcmodel2d.nbund,arcmodel2d.fibBun))
+        coeffAll  = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree + 1,15,15))
+        xcenter  = n.zeros((arcmodel2D.nwavelen,arcmodel2D.nbund,arcmodel2D.fibBun))
+        ycenter  = n.zeros((arcmodel2D.nwavelen,arcmodel2D.nbund,arcmodel2D.fibBun))
+        sigma  = n.zeros((arcmodel2D.nwavelen,arcmodel2D.nbund,arcmodel2D.fibBun))
 
         # define max order
         maxorder = 4	
 
         for i_bund in range(bStart, bEnd+1):
             print i_bund
-            kcons = i_bund*arcmodel2d.fibBun
-            for i_actwave in range(0, arcmodel2d.nwavelen):
+            kcons = i_bund*arcmodel2D.fibBun
+            for i_actwave in range(0, arcmodel2D.nwavelen):
                 # declare variables
                 actwavelength = good_wavelength[i_actwave]
                 func = interpolate.interp1d(good_wavelength,goodwaveypos[:,fib[kcons]], kind='cubic')
@@ -85,7 +85,7 @@ class arcmodel2D:
                 x2im = (x2)+10
                 y1im = (y1)-10
                 y2im = (y2)+10
-                fibcons = n.arange(kcons,kcons+arcmodel2d.fibBun,1)	
+                fibcons = n.arange(kcons,kcons+arcmodel2D.fibBun,1)	
                 rowimage = biasSubImg[y1im:y2im+1,x1im:x2im+1]
                 x_pix = n.arange(x1im,x2im+1,1)  
                 y_pix  = n.arange(y1im,y2im+1,1)
@@ -157,17 +157,17 @@ class arcmodel2D:
             ycenter[i_actwave,i_bund,:]  = ycenarr
             sigma[i_actwave,i_bund,:]  = sigmaarr 
             
-            #arcmodel2d.degree = 3
+            #arcmodel2D.degree = 3
             
             # wavelength indexes which do not have outliers 
             reqwave = array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
 
         # loop to get the value of PSF parameters at all wavelengths		    
-            for i_fib in range(0, arcmodel2d.fibBun):
+            for i_fib in range(0, arcmodel2D.fibBun):
                 for i_plot in range(1, len(mm)):
-                    wavecons   =  wavelength[:, i_bund*arcmodel2d.fibBun + i_fib]
+                    wavecons   =  wavelength[:, i_bund*arcmodel2D.fibBun + i_fib]
                     param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
-                    z = n.polyfit(good_wavelength[reqwave], param, arcmodel2d.degree)
+                    z = n.polyfit(good_wavelength[reqwave], param, arcmodel2D.degree)
                     p = n.poly1d(z)
                     coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
         
@@ -177,8 +177,8 @@ class arcmodel2D:
 
     # Function creates basis function at known wavelengths of arc-frames
     def create_basisfunc(self, actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSigma,flatSigma,rowimage,x1im,x2im,y1im,y2im,fiberflat,kcons,mor,nor):
-        datacenterval = n.zeros((arcmodel2d.fibBun,1))
-        fibcons = n.arange(kcons,kcons+arcmodel2d.fibBun,1) 
+        datacenterval = n.zeros((arcmodel2D.fibBun,1))
+        fibcons = n.arange(kcons,kcons+arcmodel2D.fibBun,1) 
         n_k = n.zeros((len(fibcons),1))
         numx = n.shape(rowimage)[1]
         numy = n.shape(rowimage)[0]
@@ -188,9 +188,9 @@ class arcmodel2D:
         zero1 = n.zeros((numlambda_val,numk,numy,numx)) 
         zero2 = n.zeros((numy*numx,1)) 	
         basisstack = 0
-        xcenarr = n.zeros((arcmodel2d.fibBun))	
-        ycenarr = n.zeros((arcmodel2d.fibBun))	
-        sigmaarr = n.zeros((arcmodel2d.fibBun))	
+        xcenarr = n.zeros((arcmodel2D.fibBun))	
+        ycenarr = n.zeros((arcmodel2D.fibBun))	
+        sigmaarr = n.zeros((arcmodel2D.fibBun))	
         for i_k in range(0,numk):
             testwave = actwavelength
             func = interpolate.interp1d(good_wavelength,goodwaveypos[:,fibcons[i_k]], kind='cubic')
@@ -213,13 +213,13 @@ class arcmodel2D:
             startx= icenx-x1im
             xPSF = n.zeros((len(x),1))
             yPSF = n.zeros((len(y),1))
-            #xPSF[:,0] = GH.pgh(x=arcmodel2d.x, xc = cenF, sigma = sigmaF ,m = mor)
-            xPSF[:,0] = GH.pgh(arcmodel2d.x, mor, cenF, sigmaF)
-            yPSF[:,0] = GH.pgh(arcmodel2d.y, nor, cenA, sigmaF)
+            #xPSF[:,0] = GH.pgh(x=arcmodel2D.x, xc = cenF, sigma = sigmaF ,m = mor)
+            xPSF[:,0] = GH.pgh(arcmodel2D.x, mor, cenF, sigmaF)
+            yPSF[:,0] = GH.pgh(arcmodel2D.y, nor, cenA, sigmaF)
             out = n.outer(yPSF,xPSF)
             datacenterval[i_k,0] = rowimage[starty,startx]
             basisfunc[0,i_k,starty+y[0]:(starty+y[len(y)-1]+1),startx+x[0]:(startx+x[len(x)-1]+1)] = out
-            func_n_k = interpolate.interp1d(arcmodel2d.yvalues,fiberflat[fibcons[i_k],:])
+            func_n_k = interpolate.interp1d(arcmodel2D.yvalues,fiberflat[fibcons[i_k],:])
             n_kVal = func_n_k(ypix)
             # relative fiber throughput (n_k) taken as 1
             n_k[i_k,0] = 1
@@ -264,22 +264,22 @@ class arcmodel2D:
         
     # write to FITS file
     def createPSFBasis(self, outdir, arcid,coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
-        theta0 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta1 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta2 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta3 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta4 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta5 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta6 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta7 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta8 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta9 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta10 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta11 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta12 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta13 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        theta14 = n.zeros((arcmodel2d.fibBun,arcmodel2d.degree+1))
-        final_wavelength  = n.zeros((arcmodel2d.fibBun,arcmodel2d.ypoints))
+        theta0 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta1 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta2 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta3 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta4 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta5 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta6 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta7 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta8 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta9 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta10 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta11 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta12 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta13 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        theta14 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+        final_wavelength  = n.zeros((arcmodel2D.fibBun,arcmodel2D.ypoints))
 
         theta0  = coeffAll[: , :,mm[1],nn[1]]
         theta1   = coeffAll[: , :,mm[2],nn[2]]
@@ -297,22 +297,22 @@ class arcmodel2D:
         theta13 =  coeffAll[: , :,mm[14],nn[14]]
         theta14 =  coeffAll[: , :,mm[15],nn[15]]
             
-        a = n.arange(0,arcmodel2d.ypoints, dtype=float)
+        a = n.arange(0,arcmodel2D.ypoints, dtype=float)
         b=n.transpose(a)
-        q = b.repeat(arcmodel2d.fibBun)
-        a = reshape(q, (arcmodel2d.ypoints,arcmodel2d.fibBun))
+        q = b.repeat(arcmodel2D.fibBun)
+        a = reshape(q, (arcmodel2D.ypoints,arcmodel2D.fibBun))
         ycenterf  = n.transpose(a)
             
-        xcenterf = n.transpose(xpos_final[:, bStart*arcmodel2d.fibBun : bStart*arcmodel2d.fibBun+arcmodel2d.fibBun])
-        sigmaarrf = n.transpose(flatSigma[:, bStart*arcmodel2d.fibBun : bStart*arcmodel2d.fibBun+arcmodel2d.fibBun])	
-        final_wavelength= n.transpose(log10(wavelength[:, bStart*arcmodel2d.fibBun : bStart*arcmodel2d.fibBun+arcmodel2d.fibBun]))
+        xcenterf = n.transpose(xpos_final[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])
+        sigmaarrf = n.transpose(flatSigma[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])	
+        final_wavelength= n.transpose(log10(wavelength[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun]))
 
         hdu0 = pf.PrimaryHDU(xcenterf)
         hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
-        hdu0.header.update('NPIX_X', arcmodel2d.xpoints, 'number of image pixels in the X-direction')
-        hdu0.header.update('NPIX_Y', arcmodel2d.ypoints, 'number of image pixels in the Y-direction')
-        hdu0.header.update('NFLUX',  arcmodel2d.ypoints,   'number of flux bins per spectrum [NAXIS1]')
-        hdu0.header.update('NSPEC',  arcmodel2d.fibBun,  'number of spectra [NAXIS2]')
+        hdu0.header.update('NPIX_X', arcmodel2D.xpoints, 'number of image pixels in the X-direction')
+        hdu0.header.update('NPIX_Y', arcmodel2D.ypoints, 'number of image pixels in the Y-direction')
+        hdu0.header.update('NFLUX',  arcmodel2D.ypoints,   'number of flux bins per spectrum [NAXIS1]')
+        hdu0.header.update('NSPEC',  arcmodel2D.fibBun,  'number of spectra [NAXIS2]')
         hdu0.header.update('PSFPARAM', 'X', 'X position as a function of flux bin')
 
         hdu1 = pf.ImageHDU(ycenterf)
@@ -376,47 +376,47 @@ class arcmodel2D:
         return (fname)
 
     def createPSFArc(self, outdir,arcid,GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
-        xcenterf  = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        ycenterf  = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        sigmaarrf  = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta0 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta1 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta2 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta3 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta4 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta5 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta6 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta7 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta8 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta9 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta10 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta11 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta12 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta13 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        theta14 = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
-        final_wavelength  = n.zeros((arcmodel2d.fibNo,arcmodel2d.nwavelen))
+        xcenterf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        ycenterf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        sigmaarrf  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta0 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta1 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta2 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta3 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta4 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta5 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta6 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta7 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta8 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta9 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta10 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta11 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta12 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta13 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        theta14 = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
+        final_wavelength  = n.zeros((arcmodel2D.fibNo,arcmodel2D.nwavelen))
 
-        for i_wave in range(0, arcmodel2d.nwavelen):
-            theta0[:,i_wave]  = GHparam[i_wave, : , mm[1],nn[1]].repeat(arcmodel2d.fibBun)
-            theta1[:,i_wave]   = GHparam[i_wave, : , mm[2],nn[2]].repeat(arcmodel2d.fibBun)
-            theta2[:,i_wave] =  GHparam[i_wave, : , mm[3],nn[3]].repeat(arcmodel2d.fibBun)
-            theta3[:,i_wave] =  GHparam[i_wave, : , mm[4],nn[4]].repeat(arcmodel2d.fibBun)
-            theta4[:,i_wave] =  GHparam[i_wave, : , mm[5],nn[5]].repeat(arcmodel2d.fibBun)
-            theta5[:,i_wave]  =  GHparam[i_wave, : , mm[6],nn[6]].repeat(arcmodel2d.fibBun)
-            theta6[:,i_wave] =  GHparam[i_wave, : , mm[7],nn[7]].repeat(arcmodel2d.fibBun)
-            theta7[:,i_wave] =  GHparam[i_wave, : , mm[8],nn[8]].repeat(arcmodel2d.fibBun)
-            theta8[:,i_wave] =  GHparam[i_wave, : , mm[9],nn[9]].repeat(arcmodel2d.fibBun)
-            theta9[:,i_wave] =  GHparam[i_wave, : , mm[10],nn[10]].repeat(arcmodel2d.fibBun)
-            theta10[:,i_wave] =  GHparam[i_wave, : , mm[11],nn[11]].repeat(arcmodel2d.fibBun)
-            theta11[:,i_wave] =  GHparam[i_wave, : , mm[12],nn[12]].repeat(arcmodel2d.fibBun)
-            theta12[:,i_wave] =  GHparam[i_wave, : , mm[13],nn[13]].repeat(arcmodel2d.fibBun)
-            theta13[:,i_wave] =  GHparam[i_wave, : , mm[14],nn[14]].repeat(arcmodel2d.fibBun)
-            theta14[:,i_wave] =  GHparam[i_wave, : , mm[15],nn[15]].repeat(arcmodel2d.fibBun)
+        for i_wave in range(0, arcmodel2D.nwavelen):
+            theta0[:,i_wave]  = GHparam[i_wave, : , mm[1],nn[1]].repeat(arcmodel2D.fibBun)
+            theta1[:,i_wave]   = GHparam[i_wave, : , mm[2],nn[2]].repeat(arcmodel2D.fibBun)
+            theta2[:,i_wave] =  GHparam[i_wave, : , mm[3],nn[3]].repeat(arcmodel2D.fibBun)
+            theta3[:,i_wave] =  GHparam[i_wave, : , mm[4],nn[4]].repeat(arcmodel2D.fibBun)
+            theta4[:,i_wave] =  GHparam[i_wave, : , mm[5],nn[5]].repeat(arcmodel2D.fibBun)
+            theta5[:,i_wave]  =  GHparam[i_wave, : , mm[6],nn[6]].repeat(arcmodel2D.fibBun)
+            theta6[:,i_wave] =  GHparam[i_wave, : , mm[7],nn[7]].repeat(arcmodel2D.fibBun)
+            theta7[:,i_wave] =  GHparam[i_wave, : , mm[8],nn[8]].repeat(arcmodel2D.fibBun)
+            theta8[:,i_wave] =  GHparam[i_wave, : , mm[9],nn[9]].repeat(arcmodel2D.fibBun)
+            theta9[:,i_wave] =  GHparam[i_wave, : , mm[10],nn[10]].repeat(arcmodel2D.fibBun)
+            theta10[:,i_wave] =  GHparam[i_wave, : , mm[11],nn[11]].repeat(arcmodel2D.fibBun)
+            theta11[:,i_wave] =  GHparam[i_wave, : , mm[12],nn[12]].repeat(arcmodel2D.fibBun)
+            theta12[:,i_wave] =  GHparam[i_wave, : , mm[13],nn[13]].repeat(arcmodel2D.fibBun)
+            theta13[:,i_wave] =  GHparam[i_wave, : , mm[14],nn[14]].repeat(arcmodel2D.fibBun)
+            theta14[:,i_wave] =  GHparam[i_wave, : , mm[15],nn[15]].repeat(arcmodel2D.fibBun)
             
             xcenterf[:,i_wave]  = n.ravel(xcenter[i_wave, :, :])
             ycenterf[:,i_wave]  = n.ravel(ycenter[i_wave, :, :])
             
-            final_wavelength[:,i_wave] = (log10(good_wavelength[i_wave])).repeat(arcmodel2d.fibNo)
+            final_wavelength[:,i_wave] = (log10(good_wavelength[i_wave])).repeat(arcmodel2D.fibNo)
             
             sigmaarrf[:,i_wave]  = n.ravel(sigma[i_wave, :, :])
 
@@ -424,10 +424,10 @@ class arcmodel2D:
         # write to FITS file
         hdu0 = pf.PrimaryHDU(xcenterf)	
         hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
-        hdu0.header.update('NPIX_X', arcmodel2d.xpoints, 'number of image pixels in the X-direction')
-        hdu0.header.update('NPIX_Y', arcmodel2d.ypoints, 'number of image pixels in the Y-direction')
-        hdu0.header.update('NFLUX',  arcmodel2d.nwavelen,   'number of flux bins per spectrum [NAXIS1]')
-        hdu0.header.update('NSPEC',  arcmodel2d.fibNo,  'number of spectra [NAXIS2]')
+        hdu0.header.update('NPIX_X', arcmodel2D.xpoints, 'number of image pixels in the X-direction')
+        hdu0.header.update('NPIX_Y', arcmodel2D.ypoints, 'number of image pixels in the Y-direction')
+        hdu0.header.update('NFLUX',  arcmodel2D.nwavelen,   'number of flux bins per spectrum [NAXIS1]')
+        hdu0.header.update('NSPEC',  arcmodel2D.fibNo,  'number of spectra [NAXIS2]')
         hdu0.header.update('PSFPARAM', 'X', 'X position as a function of flux bin')
 
         hdu1 = pf.ImageHDU(ycenterf)
