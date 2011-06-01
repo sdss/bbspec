@@ -1,4 +1,4 @@
-from bbspec.spec2d import func_arcmodel2D
+from bbspec.spec2d.arcmodel2D import arcmodel2D
 import sys
 
 """
@@ -16,7 +16,8 @@ flatid = sys.argv[2]
 first_bundle = int(sys.argv[3])
 last_bundle = int(sys.argv[4])
 
-(f1, f2) = func_arcmodel2D.model_arc(arcid, flatid, first_bundle, last_bundle)
-#(f1, f2) = func_arcmodel2D.model_arc(sys.argv[1], sys.argv[2])
+m = arcmodel2D()
+(f1, f2) = m.model_arc(arcid, flatid, first_bundle, last_bundle)
+#(f1, f2) = m.model_arc(sys.argv[1], sys.argv[2])
 print 'Wrote '  + f1
 print 'Wrote '  + f2
