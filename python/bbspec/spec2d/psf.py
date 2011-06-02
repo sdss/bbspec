@@ -120,59 +120,7 @@ class PSFBase(object):
     # 
     #     return A.reshape((self.nspec*self.nflux, self.npix_y*self.npix_x)).T
         
-    def getAsub(self, ispecmin, ispecmax, ifluxmin, ifluxmax):
-        """
-        Return xslice, yslice, A for a subset of spectra and flux bins
-        
-        xslice and yslice refer to the pixel-space slices touched by
-        the PSFs from the requested spectra.
-        """
-        
-        nspec = ispecmax - ispecmin
-        nflux = ifluxmax - ifluxmin
-        
-        #- First pass: get the pixel cutouts and slice ranges
-        cutouts = dict()
-        for i in range(ispecmin, ispecmax):
-            for j in range(ifluxmin, ifluxmax):
-                cutouts[(i,j)] = self.pix(i, j)  #- xslice, yslice, pix
-
-        #- Determine pixel min and max boundaries
-        xmin = min([tmp[0].start for tmp in cutouts.values()])
-        xmax = max([tmp[0].stop  for tmp in cutouts.values()])
-        ymin = min([tmp[1].start for tmp in cutouts.values()])
-        ymax = max([tmp[1].stop  for tmp in cutouts.values()])        
-        npix_x = xmax - xmin
-        npix_y = ymax - ymin
-        
-        #- New version: purposefully restrict pixel space
-        xmin += 15
-        xmax -= 15
-        ymin += 15
-        ymax -= 15
-        npix_x = xmax - xmin
-        npix_y = ymax - ymin
-        
-        #- Generate A
-        A = N.zeros( (npix_y*npix_x, nspec*nflux) )
-        tmp = N.zeros( (self.npix_y, self.npix_x) )
-        for i in range(ispecmin, ispecmax):
-            for j in range(ifluxmin, ifluxmax):
-                #- Get subimage and index slices
-                xslice, yslice, pix = self.pix(i, j)
-                tmp[yslice, xslice] = pix
-                
-                ij = (i-ispecmin)*nflux + (j-ifluxmin)
-                A[:, ij] = tmp[ymin:ymax, xmin:xmax].ravel()
-                tmp[yslice, xslice] = 0.0
-        
-        #- Define pixel slices which match the sub A matrix
-        xslice = slice(xmin, xmax)
-        yslice = slice(ymin, ymax)
-        
-        return xslice, yslice, A
-        
-    def getAx(self, speclo, spechi, fluxlo, fluxhi, xlo, xhi, ylo, yhi):
+    def getAsub(self, speclo, spechi, fluxlo, fluxhi, xlo, xhi, ylo, yhi):
         """
         Return A for a subset of spectra and flux bins
         """
@@ -193,10 +141,17 @@ class PSFBase(object):
                 
                 #- put them into sub-region in A
                 ij = (ispec-speclo)*nflux + (iflux-fluxlo)
-                A[:, ij] = tmp[ymin:ymax, xmin:xmax].ravel()
+                A[:, ij] = tmp[ylo:yhi, xlo:xhi].ravel()
                 tmp[yslice, xslice] = 0.0
         
         return A
+        
+    def getSparseAsub(self, speclo, spechi, fluxlo, fluxhi, xlo, xhi, ylo, yhi):
+        A = self.getAsub(speclo, spechi, fluxlo, fluxhi, xlo, xhi, ylo, yhi)
+        yy, xx = N.where(A != 0.0)
+        vv = A[yy, xx]
+        Ax = scipy.sparse.coo_matrix((vv, (yy, xx)), shape=A.shape)
+        return Ax.tocsr()
         
     def spec2pix(self, spectra):
         """
@@ -317,25 +272,28 @@ class PSFPixelated(PSFBase):
         iy = int(round(y))
         
         xmin = max(0, ix-nx/2)
-        xmax = min(self.npix_x, ix+nx/2)
+        xmax = min(self.npix_x, ix+nx/2+1)
         ymin = max(0, iy-ny/2)
-        ymax = min(self.npix_y, iy+ny/2)
+        ymax = min(self.npix_y, iy+ny/2+1)
+                
+        # if ispec == 0 and iflux == 52:
+        #     stop
                 
         if ix < nx/2:
             psfimage = psfimage[:, nx/2-ix:]
         if iy < ny/2:
             psfimage = psfimage[ny/2-iy:, :]
         
-        if ix+nx/2 > self.npix_x:
-            dx = self.npix_x - (ix+nx/2)
+        if ix+nx/2+1 > self.npix_x:
+            dx = self.npix_x - (ix+nx/2+1)
             psfimage = psfimage[:, :dx]
             
-        if iy+ny/2 > self.npix_y:
-            dy = self.npix_y - (iy+ny/2)
-            psfimage = psfimage[:, :dy]
+        if iy+ny/2+1 > self.npix_y:
+            dy = self.npix_y - (iy+ny/2+1)
+            psfimage = psfimage[:dy, :]
         
-        xslice = slice(xmin, xmax+1)
-        yslice = slice(ymin, ymax+1)
+        xslice = slice(xmin, xmax)
+        yslice = slice(ymin, ymax)
         
         return xslice, yslice, psfimage
 
