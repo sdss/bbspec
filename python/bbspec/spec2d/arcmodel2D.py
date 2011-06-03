@@ -20,13 +20,13 @@ class arcmodel2D:
     def __init__(self,indir = '.', outdir = '.'):
         self.indir = indir
         self.outdir = outdir
+        self.color = None
+        self.reqwave = None
         
     def setarc_flat(self,arcid,flatid):
         self.arcid = arcid
         self.flatid = flatid
-        self.color = arcid.lstrip(1)
-        if (self.color == 'r'): arcmodel2D.ypoints =  4128
-        else: arcmodel2D.ypoints = 4112
+        self.setcolor()
             
         spArc_file = self.indir + '/spArc-' + self.arcid + '.fits.gz' 
         spFlat_file = self.indir + '/spFlat-' + self.flatid + '.fits.gz' 
@@ -52,9 +52,32 @@ class arcmodel2D:
         self.peakPos = self.get_data(h_spFlat,1)
         self.xsigma=  self.get_data(h_spFlat,3)
         h_spFlat.close()  
+        
 
     def get_data(self,hdu,i): return n.rec.array(hdu[i].data,dtype=hdu[i].data.dtype)
-
+    
+    def setcolor(self):
+        pos = self.arcid.rfind('/')
+        if pos<0: self.color = self.arcid[0]
+        elif pos<len(self.arcid)-1: self.color = self.arcid[pos+1]
+        else: self.color = None
+        if self.color!='r' and self.color!='blue': print "ERROR: File name not in correct format"
+        else: print "camera "+self.color
+        
+        if (self.color == 'r'): 
+            arcmodel2D.ypoints =  4128
+            
+            # wavelength indexes which do not have outliers 
+            self.reqwave = n.array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
+                        
+        elif (self.color == 'b'): 
+            arcmodel2D.ypoints = 4112
+            
+            # wavelength indexes which do not have outliers 
+            self.reqwave = n.array([0,1,4,5,10,14,15,16,25,26,28,29,30,32,33,34,35,36,37,38,39,40,41,42,44,45])
+            
+        else: print ('File name not in correct format')
+        
     def model_arc(self, bStart, bEnd):
         bStart = int(bStart)
         bEnd = int(bEnd)
@@ -172,22 +195,13 @@ class arcmodel2D:
                 sigma[i_actwave,i_bund,:]  = sigmaarr 
             
             #arcmodel2D.degree = 3
-            
-            # wavelength indexes which do not have outliers 
-            
-            if (self.color == 'r'):
-                reqwave = n.array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
-            elif(self.color == 'b'):
-                reqwave = n.array([0,1,4,5,10,14,15,16,25,26,28,29,30,32,33,34,35,36,37,38,39,40,41,42,44,45])
-            else:
-                print ('File name not in correct format')
-            
+                        
             # loop to get the value of PSF parameters at all wavelengths    
             for i_fib in range(0, arcmodel2D.fibBun):
                 for i_plot in range(1, len(mm)):
                     wavecons   =  wavelength[:, i_bund*arcmodel2D.fibBun + i_fib]
-                    param = GHparam[reqwave, i_bund, mm[i_plot], nn[i_plot]]
-                    z = n.polyfit(good_wavelength[reqwave], param, arcmodel2D.degree)
+                    param = GHparam[self.reqwave, i_bund, mm[i_plot], nn[i_plot]]
+                    z = n.polyfit(good_wavelength[self.reqwave], param, arcmodel2D.degree)
                     p = n.poly1d(z)
                     coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
         
@@ -391,9 +405,9 @@ class arcmodel2D:
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
         
         cols = {'arcid':self.arcid,'bStart':str(bStart).zfill(2),'bundle':str(bEnd).zfill(2)}
-        if bStart==bEnd: fname = self.outdir + "/spBasisPSF-%(arcid)s-%(bStart)s.fits" % cols
-        elif bStart==0 && bEnd==arcmodel2D.nbund -1: fname = self.outdir + "/spBasisPSF-%s.fits" % self.arcid
-        else: fname  = self.outdir + "/spBasisPSF-%(arcid)s-%(bStart)s-%(bEnd)s.fits" % cols
+        if bStart==bEnd: fname = self.outdir + "/spBasisPSF-GH4-%(arcid)s-%(bStart)s.fits" % cols
+        elif bStart==0 and bEnd==arcmodel2D.nbund -1: fname = self.outdir + "/spBasisPSF-%s.fits" % self.arcid
+        else: fname  = self.outdir + "/spBasisPSF-GH4-%(arcid)s-%(bStart)s-%(bEnd)s.fits" % cols
         
         hdulist.writeto(fname, clobber=True)
         return (fname)
@@ -510,9 +524,9 @@ class arcmodel2D:
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 
         cols = {'arcid':self.arcid,'bStart':str(bStart).zfill(2),'bundle':str(bEnd).zfill(2)}
-        if bStart==bEnd: fname = self.outdir + "/spArcPSF-%(arcid)s-%(bStart)s.fits" % cols
-        elif bStart==0 && bEnd==arcmodel2D.nbund-1: fname = self.outdir + "/spBasisPSF-%s.fits" % self.arcid
-        else: fname = self.outdir + "/spArcPSF-%(arcid)s-%(bStart)s-%(bEnd)s.fits" % cols
+        if bStart==bEnd: fname = self.outdir + "/spArcPSF-GH4-%(arcid)s-%(bStart)s.fits" % cols
+        elif bStart==0 and bEnd==arcmodel2D.nbund-1: fname = self.outdir + "/spBasisPSF-%s.fits" % self.arcid
+        else: fname = self.outdir + "/spArcPSF-GH4-%(arcid)s-%(bStart)s-%(bEnd)s.fits" % cols
 
         hdulist.writeto(fname, clobber=True)
         return (fname)
