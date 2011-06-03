@@ -19,6 +19,5 @@ last_bundle = int(sys.argv[4])
 m = arcmodel2D('.','.')
 m.setarc_flat(arcid,flatid)
 (f1, f2) = m.model_arc(first_bundle, last_bundle)
-m.close()
 print 'Wrote '  + f1
 print 'Wrote '  + f2
