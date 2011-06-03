@@ -95,69 +95,69 @@ class arcmodel2D:
                 numy = len(y_pix)
                 numk = len(fibcons) 
                 numlambda_val = 1
-            flag = 0	 
-            n_k = n.zeros((len(fibcons),1))
-            basisfuncstack = n.zeros((numlambda_val,numk,numy,numx))
-            basisstack = n.zeros((numy*numx,1))
-            mm = 0 ; nn = 0
-            # Creating basis function
-            for mor in range (0,maxorder+1):
-                for nor in range (0, maxorder+1):
-                    if (mor+nor <= 4):
-                        mm = n.hstack((mm,mor))
-                        nn = n.hstack((nn,nor))
-                        [ff, basisfunc, basisimage,flag,xcenarr,ycenarr, sigmaarr] = self.create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSigma,flatSigma,rowimage,x1im,x2im,y1im,y2im,fiberflat,kcons,mor,nor) 	
-                        # checking if all values are non-zero
-                        if (flag == 1):			
-                            basisfuncstack = n.hstack((basisfuncstack,basisfunc))
-                            basisstack = n.hstack((basisstack,basisimage))
-                        else:
-                            break 
-                if (flag == 0):		
-                    break
-            if (flag == 0):	
-                continue
-            
+                flag = 0	 
+                n_k = n.zeros((len(fibcons),1))
+                basisfuncstack = n.zeros((numlambda_val,numk,numy,numx))
+                basisstack = n.zeros((numy*numx,1))
+                mm = 0 ; nn = 0
+                # Creating basis function
+                for mor in range (0,maxorder+1):
+                    for nor in range (0, maxorder+1):
+                        if (mor+nor <= 4):
+                            mm = n.hstack((mm,mor))
+                            nn = n.hstack((nn,nor))
+                            [ff, basisfunc, basisimage,flag,xcenarr,ycenarr, sigmaarr] = self.create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSigma,flatSigma,rowimage,x1im,x2im,y1im,y2im,fiberflat,kcons,mor,nor) 	
+                            # checking if all values are non-zero
+                            if (flag == 1):			
+                                basisfuncstack = n.hstack((basisfuncstack,basisfunc))
+                                basisstack = n.hstack((basisstack,basisimage))
+                            else:
+                                break 
+                    if (flag == 0):		
+                        break
+                if (flag == 0):	
+                    continue
 
-            basis = n.sum(n.sum(basisfuncstack[:,:,:,:],axis = 1),axis = 0)
-            nk = n.shape(basisfunc)[1]
-            nlambda = n.shape(basisfunc)[0]
-            ni = n.shape(basisfunc)[2]
-            nj = n.shape(basisfunc)[3]
 
-            N = n.zeros((ni*nj,ni*nj))
-            invvr_sub = invvr[y1im:y2im+1,x1im:x2im+1]		
-            flat_invvr = n.ravel(invvr_sub)
-            N = n.diag(flat_invvr)
-            
-            p = n.ravel(rowimage)
-            p1= n.zeros((len(p),1))
-            p1[:,0] = p
-            B1 = basisstack[:,1:]
-            scaledbasis = n.zeros((ni*nj ,1))
-            [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
-            GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
-                
-                # model image
-            scaledbasis = n.dot(B1, theta)
-            scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
-            scaledbasis1[:,0] = scaledbasis[:,0]
-            
-            #chi-squared value
-            ndiag = n.zeros((len(N),1))
-            ndiag[:,0] = n.diag(N)
-            nz = where(scaledbasis1 != 0)
-            err = (p1[nz]-scaledbasis1[nz])*n.sqrt(ndiag[nz])
-            chi_sqrd[i_actwave,i_bund,0] = n.mean(n.power(err,2))
-            scaledbasis.resize(ni,nj)                                                                                                                        
-            scaledbasis4 = scaledbasis
-            
-            # Residual values	
-            residualGH = rowimage - scaledbasis
-        
-            xcenter[i_actwave,i_bund,:]  = xcenarr
-            ycenter[i_actwave,i_bund,:]  = ycenarr
-            sigma[i_actwave,i_bund,:]  = sigmaarr 
+                basis = n.sum(n.sum(basisfuncstack[:,:,:,:],axis = 1),axis = 0)
+                nk = n.shape(basisfunc)[1]
+                nlambda = n.shape(basisfunc)[0]
+                ni = n.shape(basisfunc)[2]
+                nj = n.shape(basisfunc)[3]
+
+                N = n.zeros((ni*nj,ni*nj))
+                invvr_sub = invvr[y1im:y2im+1,x1im:x2im+1]		
+                flat_invvr = n.ravel(invvr_sub)
+                N = n.diag(flat_invvr)
+
+                p = n.ravel(rowimage)
+                p1= n.zeros((len(p),1))
+                p1[:,0] = p
+                B1 = basisstack[:,1:]
+                scaledbasis = n.zeros((ni*nj ,1))
+                [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
+                GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
+
+                    # model image
+                scaledbasis = n.dot(B1, theta)
+                scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
+                scaledbasis1[:,0] = scaledbasis[:,0]
+
+                #chi-squared value
+                ndiag = n.zeros((len(N),1))
+                ndiag[:,0] = n.diag(N)
+                nz = where(scaledbasis1 != 0)
+                err = (p1[nz]-scaledbasis1[nz])*n.sqrt(ndiag[nz])
+                chi_sqrd[i_actwave,i_bund,0] = n.mean(n.power(err,2))
+                scaledbasis.resize(ni,nj)                                                                                                                        
+                scaledbasis4 = scaledbasis
+
+                # Residual values	
+                residualGH = rowimage - scaledbasis
+
+                xcenter[i_actwave,i_bund,:]  = xcenarr
+                ycenter[i_actwave,i_bund,:]  = ycenarr
+                sigma[i_actwave,i_bund,:]  = sigmaarr 
             
             #arcmodel2D.degree = 3
             
