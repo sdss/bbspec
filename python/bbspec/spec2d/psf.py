@@ -252,7 +252,7 @@ class PSFPixelated(PSFBase):
         
         #- Rescale units
         xx = xscale * (x - x0)
-        yy = xscale * (y - x0)
+        yy = yscale * (y - y0)
         
         #- Generate PSF image at (x,y)
         psfimage = N.zeros(self.psfimage.shape[2:4])
@@ -262,8 +262,8 @@ class PSFPixelated(PSFBase):
             psfimage += xx**nx * yy**ny * self.psfimage[igroup, i]
                                 
         #- Sinc Interpolate
-        dx = int(x) - x
-        dy = int(y) - y
+        dx = int(round(x)) - x
+        dy = int(round(y)) - y
         psfimage = self._sincshift(psfimage, dx, dy)
         
         #- Check boundaries
@@ -275,9 +275,6 @@ class PSFPixelated(PSFBase):
         xmax = min(self.npix_x, ix+nx/2+1)
         ymin = max(0, iy-ny/2)
         ymax = min(self.npix_y, iy+ny/2+1)
-                
-        # if ispec == 0 and iflux == 52:
-        #     stop
                 
         if ix < nx/2:
             psfimage = psfimage[:, nx/2-ix:]
