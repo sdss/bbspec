@@ -4,6 +4,14 @@
 bin/merge_psf_bundles.py -text
 doc/datamodel.txt -text
 doc/hack.txt -text
+examples/00126630/spArc-b1-00126630.fit.gz -text
+examples/00126630/spArc-b2-00126630.fit.gz -text
+examples/00126630/spArc-r1-00126630.fit.gz -text
+examples/00126630/spArc-r2-00126630.fit.gz -text
+examples/00126630/spFlat-b1-00126631.fit.gz -text
+examples/00126630/spFlat-b2-00126631.fit.gz -text
+examples/00126630/spFlat-r1-00126631.fit.gz -text
+examples/00126630/spFlat-r2-00126631.fit.gz -text
 examples/DemoPGHfulltest.py -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
