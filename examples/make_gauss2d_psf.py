@@ -9,11 +9,12 @@ import pyfits
 
 #- Hardcoded constants
 class C:
-    npix_x = 100    #- image dimensions
     nspec  = 10    #- number of spectra
-    npix_y = 110    #- image dimensions
-    nflux  = 90    #- number of flux bins per spectrum
-    dx = 10        #- spectral spacing on the image
+    nflux  = 50    #- number of flux bins per spectrum
+    dx = 6.75        #- spectral spacing on the image
+
+C.npix_y = C.nflux + 5
+C.npix_x = int(C.dx * C.nspec)
 
 #- Big
 # C.npix_x = 200
@@ -25,14 +26,19 @@ class C:
 # C.npix_y = 160
 # C.nflux = 150
 
+#- Single spectrum
+# C.npix_x = 10
+# C.nspec = 1
+# C.npix_y = C.nflux
+
 #- spatially varying PSF
 def psf_params(x0, y0):
     """
     return spatially dependent PSF parameters:
     amplitude, major axis, minor axis, angle
     """
-    a, b = 2.0, 2.0   #- ellipse major and minor axes in center
-    ### a, b = 1.0, 1.0   #- ellipse major and minor axes in center
+    ### a, b = 2.0, 2.0   #- ellipse major and minor axes in center
+    a, b = 1.0, 1.0   #- ellipse major and minor axes in center
     c = 1.0           #- amplitude
     
     #- Transform to range -1 to 1
@@ -40,8 +46,9 @@ def psf_params(x0, y0):
     y1 = (y0 - C.npix_y/2.0) / (C.npix_y/2.0)
     # y1 = (y0 - C.nflux/2.0) / (C.nflux/2.0)
     
-    #- major axis varies with position
-    a += 1.0 * (N.abs(x1) + N.abs(y1))
+    #- sigma varies with position
+    a += 0.5 * (N.abs(x1) + N.abs(y1))
+    b += 0.1 * (N.abs(x1) + N.abs(y1))
     
     #- PSF angle varies with position
     theta = 0.25 * N.pi * N.sin(x1*N.pi/2) * N.sin(y1*N.pi/2)
