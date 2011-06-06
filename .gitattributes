@@ -9,6 +9,7 @@ examples/DemoPGHfulltest.py -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
 examples/batchpbs_example.py -text
+examples/batchpbs_psf.py -text
 examples/make-my-psf.py -text
 examples/make_gauss2d_psf.py -text
 examples/make_test_spectra.py -text
