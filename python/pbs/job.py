@@ -1,4 +1,4 @@
-from numpy import sum,arange
+import numpy
 #from bbspec.spec2d.arcmodel2D import arcmodel2D
 from subprocess import call
 try: import pp
@@ -79,7 +79,7 @@ class job:
         if job.ready:
             for i in xrange(self.ncpus):
                 eg = example()
-                worker = self.server.submit(eg.sumStuff, (i*10, (i+1)*10, 0.5), modules=('numpy.sum','numpy.arange'))
+                worker = self.server.submit(eg.sumStuff, (i*10, (i+1)*10, 0.5), modules=example.modules)
                 self.worker.append(worker)
             for worker in self.worker: self.result.append(worker())
             self.server.print_stats()
@@ -95,5 +95,6 @@ class job:
         return self.result
 
 class example:
+    modules = ('numpy',)
     def sumStuff(self, start, end, step=1):
         return numpy.sum(numpy.arange(start, end, step))
