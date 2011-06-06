@@ -79,7 +79,7 @@ class job:
         if job.ready:
             for i in xrange(self.ncpus):
                 eg = example()
-                worker = self.server.submit(eg.sumStuff, (i*10, (i+1)*10, 0.5), modules=example.modules)
+                worker = self.server.submit(eg.sumStuff, (i*10, (i+1)*10, 0.5), modules=eg.modules)
                 self.worker.append(worker)
             for worker in self.worker: self.result.append(worker())
             self.server.print_stats()
