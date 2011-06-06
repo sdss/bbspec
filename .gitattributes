@@ -1,6 +1,7 @@
 * text=auto !eol
 /Makefile -text
 /RELEASE_NOTES -text
+bin/extract_spectra.py -text
 bin/merge_psf_bundles.py -text
 doc/datamodel.txt -text
 doc/hack.txt -text
