@@ -24,6 +24,7 @@ parser.add_option("-o", "--output", type="string",  help="output extracted spect
 parser.add_option("-b", "--bundle", type="string",  help="comma separated list of bundles, 0-24")
 parser.add_option("-f", "--fluxbins", type="string",  help="fmin,fmax,step : flux bin range and sub-region size")
 parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation with parallel python")
+parser.add_option("-T", "--test", action='store_true',  help="hook to try test code")
 opts, args = parser.parse_args()
 
 def parse_string_range(s):
@@ -62,7 +63,7 @@ if opts.parallel:
     try:
         import pp
     except ImportError:
-        print "WARNING: Parallel python not available; running in normal mode"
+        print "ERROR: Parallel python not available; running in normal mode"
         opts.parallel = False
 
 #- Load the input data
@@ -92,32 +93,54 @@ if opts.parallel:
     job_server = pp.Server()
     print "Running in parallel with %d CPUs" % job_server.get_ncpus()
     
-for b in opts.bundle:
-    if b < 0 or b > 24:  #- Hardcode bundle range!
-        print "WARNING: You are crazy, there is no bundle %d.  Try 0-24." % b
-        continue
+#--- TEST ---
+if opts.test:
+    from multiprocessing import Process, cpu_count
+    for b in opts.bundle:
+        ispecmin = b*nspec_per_bundle
+        ispecmax = ispecmin + nspec_per_bundle
+        jobs = list()
+        for iflux in range(fmin,fmax,fstep):
+            ifluxlo = max(0, iflux)
+            ifluxhi = min(psf.nflux, iflux+fstep)
+            print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
         
-    ispecmin = b*nspec_per_bundle
-    ispecmax = ispecmin + nspec_per_bundle
-    for iflux in range(fmin,fmax,fstep):
-        ifluxlo = max(0, iflux)
-        ifluxhi = min(psf.nflux, iflux+fstep)
-        print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
-        if opts.parallel:
             args = (ispecmin, ispecmax, ifluxlo, ifluxhi)
-            j = job_server.submit(ex.extract_subregion, args=args, modules=modules, callback=ex.update_subregion)
-            jobs.append(j)
-        else:
-            ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
-
-#- Print results of parallel jobs
-if opts.parallel:
-    for job in jobs:
-        job()
+            p = Process(target=ex.extract_subregion, args=args)
+            p.start()
+            jobs.append(p)
+            
+            #- Stop and wait if we've filled up the number of CPUs
+            if len(jobs) == cpu_count:
+                for job in jobs:
+                    job.join()
+                jobs = list()
+else:
+    for b in opts.bundle:
+        if b < 0 or b > 24:  #- Hardcode bundle range!
+            print "WARNING: You are crazy, there is no bundle %d.  Try 0-24." % b
+            continue
         
-    job_server.print_stats()
-    
+        ispecmin = b*nspec_per_bundle
+        ispecmax = ispecmin + nspec_per_bundle
+        for iflux in range(fmin,fmax,fstep):
+            ifluxlo = max(0, iflux)
+            ifluxhi = min(psf.nflux, iflux+fstep)
+            print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
+            if opts.parallel:
+                args = (ispecmin, ispecmax, ifluxlo, ifluxhi)
+                j = job_server.submit(ex.extract_subregion, args=args, modules=modules, callback=ex.update_subregion)
+                jobs.append(j)
+            else:
+                ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
 
+    #- Print results of parallel jobs
+    if opts.parallel:
+        for job in jobs:
+            job()
+        
+        job_server.print_stats()
+    
 #- Output results
 print "Writing output to", opts.output
 hdus = list()
