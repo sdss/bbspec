@@ -2,7 +2,7 @@
 #PBS -W umask=0022
 #PBS -V
 #PBS -j oe
-#PBS -l nodes=1:ppn=5
+#PBS -l nodes=1:ppn=8
 #PBS -N server
 echo "JOB EXECUTING ON" $HOSTNAME 
 /clusterfs/riemann/software/pp/1.6.1-2.7/bin/ppserver.py -a -t 60 -s "4-bigboss-05312011" 
