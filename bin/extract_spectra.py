@@ -2,6 +2,11 @@
 
 """
 Extract spectra from an image given a PSF, working in sub-regions
+
+Hardcoded:
+  - number of fibers per bundle
+  - number of bundles
+  - input options for testing
 """
 
 import optparse
@@ -18,6 +23,7 @@ parser.add_option("-p", "--psf",    type="string",  help="input psf")
 parser.add_option("-o", "--output", type="string",  help="output extracted spectra")
 parser.add_option("-b", "--bundle", type="string",  help="comma separated list of bundles, 0-24")
 parser.add_option("-f", "--fluxbins", type="string",  help="fmin,fmax,step : flux bin range and sub-region size")
+parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation with parallel python")
 opts, args = parser.parse_args()
 
 def parse_string_range(s):
@@ -52,68 +58,65 @@ if opts.bundle is None:
     print "WARNING: Bundle range not set, using -b", opts.bundle
 #--- TEST ---
 
+if opts.parallel:
+    try:
+        import pp
+    except ImportError:
+        print "WARNING: Parallel python not available; running in normal mode"
+        opts.parallel = False
+
 #- Load the input data
 print "Loading input image and PSF"
 psf = load_psf(opts.psf)
 image = pyfits.getdata(opts.image, 0)
 ivar = pyfits.getdata(opts.image, 1)
 
-#- Set default flux bin range
-
 #- Parse bundle and flux bin options
 opts.bundle = parse_string_range(opts.bundle)  #- "1,3-5" -> [1,3,4,5]
 fmin,fmax,fstep = map(int, opts.fluxbins.split(','))
+
+#- Hard code number of spectra per bundle
+nspec_per_bundle = 20
 
 #- Run extraction
 from bbspec.spec2d.extract import SimpleExtractor
 ex = SimpleExtractor(image, ivar, psf)
 
-nspec_per_bundle = 20
+#- Parallel setup, which we may or may not use
+modules = ('sys', 'from time import time', 'numpy as N', 'scipy.sparse',
+           'from scipy.sparse import spdiags',
+           'from bbspec.spec2d import resolution_from_icov')
+jobs = list()
+
+if opts.parallel:
+    job_server = pp.Server()
+    print "Running in parallel with %d CPUs" % job_server.get_ncpus()
+    
 for b in opts.bundle:
-    if b < 0 or b > 24:
-        print "You are crazy, there is no bundle %d.  Try 0-24." % b
+    if b < 0 or b > 24:  #- Hardcode bundle range!
+        print "WARNING: You are crazy, there is no bundle %d.  Try 0-24." % b
         continue
         
     ispecmin = b*nspec_per_bundle
     ispecmax = ispecmin + nspec_per_bundle
-    for iflux in range(fmin, min(fmax, psf.nflux), fstep):
+    for iflux in range(fmin,fmax,fstep):
         ifluxlo = max(0, iflux)
         ifluxhi = min(psf.nflux, iflux+fstep)
         print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
-        ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
+        if opts.parallel:
+            args = (ispecmin, ispecmax, ifluxlo, ifluxhi)
+            j = job_server.submit(ex.extract_subregion, args=args, modules=modules, callback=ex.update_subregion)
+            jobs.append(j)
+        else:
+            ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
 
-#- Placeholder code for trying parallel python
-# import pp
-# job_server = pp.Server()
-# modules = ('sys', 'from time import time', 'numpy as N', 'scipy.sparse',
-#            'from scipy.sparse import spdiags',
-#            'from bbspec.spec2d import resolution_from_icov')
-# jobs = list()
-# for b in opts.bundle:
-#     ispecmin = b*nspec_per_bundle
-#     ispecmax = ispecmin + nspec_per_bundle
-#     for iflux in range(fmin,fmax,fstep):
-#         print "Bundle %2d, flux bins %4d - %4d" % (b, iflux, iflux+fstep)
-#         args = (ispecmin, ispecmax, iflux, iflux+fstep)
-#         j = job_server.submit(ex.extract_subregion, args=args, modules=modules, callback=ex.update_subregion)
-#         jobs.append(j)
-# 
-# for i, j in enumerate(jobs):
-#     print "--- %d ---" % i
-#     j()
-
-#- Debug small output
-# ys = slice(900, 1050)
-# xs = slice(260, 410)
-# pyfits.writeto('bkgfit.fits', image[ys, xs], clobber=True)
-# pyfits.append('bkgfit.fits', ivar[ys, xs])
-# pyfits.append('bkgfit.fits', ex1.model[ys, xs])
-# pyfits.append('bkgfit.fits', ex2.model[ys, xs])
-# pyfits.append('bkgfit.fits', ex2.bkg_model[ys, xs])
-
-#--- DEBUG ---
-### import pdb; pdb.set_trace()
-#--- DEBUG ---
+#- Print results of parallel jobs
+if opts.parallel:
+    for job in jobs:
+        job()
+        
+    job_server.print_stats()
+    
 
 #- Output results
 print "Writing output to", opts.output

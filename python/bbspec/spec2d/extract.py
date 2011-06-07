@@ -223,10 +223,6 @@ class SimpleExtractor(Extractor):
             
         xspec0 = N.array( ATAinv.dot( Ax.T.dot(p) ) )
 
-        #- Project model, including bkg terms
-        model = A.dot(xspec0.ravel()).reshape(ny, nx)
-        self._model[ylo:yhi, xlo:xhi] = model
-        
         #- Project just the bkg model part
         if bkgorder > 0:
             bkg = N.zeros(xspec0.size)
@@ -245,15 +241,55 @@ class SimpleExtractor(Extractor):
         xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
         xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
         
+        #- Project model, including bkg terms
+        model = A.dot(xspec0.ravel()).reshape(ny, nx)
+        
         #- Rename working variables for output
-        self._spectra[speclo:spechi, fluxlo:fluxhi] = xspec1[:, dflo:dflo+nflux]
-        self._ivar[speclo:spechi, fluxlo:fluxhi] = xspec_ivar[:, dflo:dflo+nflux]
-        self._deconvolved_spectra[speclo:spechi, fluxlo:fluxhi] = xspec0[:, dflo:dflo+nflux]
+        ### self._spectra[speclo:spechi, fluxlo:fluxhi] = xspec1[:, dflo:dflo+nflux]
+        ### self._ivar[speclo:spechi, fluxlo:fluxhi] = xspec_ivar[:, dflo:dflo+nflux]
+        ### self._deconvolved_spectra[speclo:spechi, fluxlo:fluxhi] = xspec0[:, dflo:dflo+nflux]
+        ### self._model[ylo:yhi, xlo:xhi] = model
+
+        result = dict()
+        result['spectra'] = xspec1[:, dflo:dflo+nflux]
+        result['ivar'] = xspec_ivar[:, dflo:dflo+nflux]
+        result['deconvolved_spectra'] = xspec0[:, dflo:dflo+nflux]
+        result['image_model'] = model
+        result['speclo'] = speclo
+        result['spechi'] = spechi
+        result['fluxlo'] = fluxlo
+        result['fluxhi'] = fluxhi
+        result['xlo'] = xlo
+        result['xhi'] = xhi
+        result['ylo'] = ylo
+        result['yhi'] = yhi
+        
+        self.update_subregion(result)
+        
+        return result
                                 
         #- What do I fill in for these?
         # n = psf.nspec * psf.nflux
         # self._dspec_icov = ATA.reshape( (n, n) )
         # self._resolution = R
+
+    def update_subregion(self, results):
+        """
+        Fill in internal variables for spectra, model, etc. using the
+        results dictionary returned by extract_subregion().  This is
+        used internally by extract_subregion, and can be used externally
+        as a parallel python callback.
+        """
+        
+        xlo, xhi = results['xlo'], results['xhi']
+        ylo, yhi = results['ylo'], results['yhi']
+        speclo, spechi = results['speclo'], results['spechi']
+        fluxlo, fluxhi = results['fluxlo'], results['fluxhi']
+        
+        self._model[ylo:yhi, xlo:xhi] = results['image_model']
+        self._spectra[speclo:spechi, fluxlo:fluxhi] = results['spectra']
+        self._deconvolved_spectra[speclo:spechi, fluxlo:fluxhi] = results['deconvolved_spectra']
+        self._ivar[speclo:spechi, fluxlo:fluxhi] = results['ivar']        
 
     def extract(self):
         """Actually do the extraction"""
@@ -275,6 +311,7 @@ class SimpleExtractor(Extractor):
         Ax = psf.getSparseA()
         ### _timeit('Get Sparse A')
         
+        #- construct sparse diagonal noise matrix
         ixy = N.arange(len(sqrt_ivar))
         npix = psf.npix_x * psf.npix_y
         Ni = scipy.sparse.coo_matrix( (sqrt_ivar, (ixy, ixy)), shape=(npix, npix) )
@@ -308,8 +345,7 @@ class SimpleExtractor(Extractor):
 
         #- Variance of extracted reconvolved spectrum
         Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
-        xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
-        xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
+        xspec_ivar = (1.0/Cx.diagonal()).reshape(xspec1.shape)
         _timeit('Calculate Variance')
         
         #- Rename working variables for output
