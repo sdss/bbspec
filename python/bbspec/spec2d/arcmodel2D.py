@@ -8,7 +8,6 @@ class arcmodel2D:
     x = n.arange(-5,6,1) 
     y = n.arange(-5,6,1)
     fibNo = 500
-    nwavelen = 65
     fibBun = 20
     xpoints = 4114
     ypoints = 4128
@@ -68,14 +67,14 @@ class arcmodel2D:
             arcmodel2D.ypoints =  4128
             
             # wavelength indexes which do not have outliers 
-            self.reqwave = n.array([11,13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,30, 31, 32, 33, 34,  41, 44, 46, 47, 48, 49, 50, 52, 53,55, 56, 57, 59, 60,62])
-                        
+            self.reqwave = n.array([6,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,37,41,42,44,46,47,48,49,50,52,53,55,56,57,59,60,62,64])
+    	    #self.nwavelen = 65	                    
         elif (self.color == 'b'): 
             arcmodel2D.ypoints = 4112
-            
+            #self.nwavelen = 45	 
             # wavelength indexes which do not have outliers 
-            self.reqwave = n.array([0,1,4,5,10,14,15,16,25,26,28,29,30,32,33,34,35,36,37,38,39,40,41,42,44,45])
-            
+            #self.reqwave = n.array([0,1,4,5,10,14,15,16,25,26,28,29,30,32,33,34,35,36,37,38,39,40,41,42,44,45])
+             self.reqwave = n.array([4,5,9,12,13,15,19,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,43,44])
         else: print ('File name not in correct format')
         
     def model_arc(self, bStart, bEnd):
