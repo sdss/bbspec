@@ -15,7 +15,6 @@ class job:
     
     def __init__(self):
         self.nservers = 1           #number of compute nodes
-        self.ppn = 8                #number of procs per compute node
         self.port = 60000           #job listen port
         self.timeout = 60           #seconds to wait before freeing the node, after completion
         self.sleep = 20             #seconds to wait after qsub command before checking for active nodes
@@ -31,7 +30,6 @@ class job:
         self.localhost = True       #run workers on localhost (set to false for cluster computations)
         
     def set_nservers(self,nservers): self.nservers = nservers 
-    def set_ppn(self,ppn): self.ppn = ppn 
     def set_port(self,port): self.port = port 
     def set_password(self,password): self.password = password
     def set_cluster(self,cluster): 
@@ -53,7 +51,7 @@ class job:
                 self.server = pp.Server(ppservers=self.ppservers,ncpus=self.ncpus,secret=self.password)
         elif self.localhost:
             self.nservers = 1
-            self.server = pp.Server(ncpus=self.ppn)
+            self.server = pp.Server()
             self.ncpus = self.server.get_ncpus()        #count number of actual cpus on localhost
         self.set_servers()
         self.reset()
