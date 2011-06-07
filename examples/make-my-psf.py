@@ -13,11 +13,10 @@ of the form, e.g., r1-XXXXXXXX
 
 arcid = sys.argv[1]
 flatid = sys.argv[2]
-first_bundle = int(sys.argv[3])
-last_bundle = int(sys.argv[4])
+i_bund = int(sys.argv[3])
 
 m = arcmodel2D('.','.')
 m.setarc_flat(arcid,flatid)
-(f1, f2) = m.model_arc(first_bundle, last_bundle)
+(f1, f2) = m.model_arc(i_bund)
 print 'Wrote '  + f1
 print 'Wrote '  + f2
