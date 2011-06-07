@@ -35,7 +35,8 @@ class job:
     
     def init(self):
         self.set_autodiscovery()
-        ncpus = self.nservers * self.ppn
+        if self.nservers>1: ncpus = 0
+        else: ncpus = self.nservers * self.ppn
         self.server = pp.Server(ppservers=self.ppservers,ncpus=ncpus,secret=self.password)
         self.set_servers()
         self.reset()
