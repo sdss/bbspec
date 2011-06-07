@@ -111,7 +111,7 @@ if opts.test:
             jobs.append(p)
             
             #- Stop and wait if we've filled up the number of CPUs
-            if len(jobs) == cpu_count:
+            if len(jobs) == cpu_count():
                 for job in jobs:
                     job.join()
                 jobs = list()
