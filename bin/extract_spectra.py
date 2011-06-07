@@ -70,11 +70,37 @@ ex = SimpleExtractor(image, ivar, psf)
 
 nspec_per_bundle = 20
 for b in opts.bundle:
+    if b < 0 or b > 24:
+        print "You are crazy, there is no bundle %d.  Try 0-24." % b
+        continue
+        
     ispecmin = b*nspec_per_bundle
     ispecmax = ispecmin + nspec_per_bundle
-    for iflux in range(fmin,fmax,fstep):
-        print "Bundle %2d, flux bins %4d - %4d" % (b, iflux, iflux+fstep)
-        ex.extract_subregion(ispecmin, ispecmax, iflux, iflux+fstep)
+    for iflux in range(fmin, min(fmax, psf.nflux), fstep):
+        ifluxlo = max(0, iflux)
+        ifluxhi = min(psf.nflux, iflux+fstep)
+        print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
+        ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
+
+#- Placeholder code for trying parallel python
+# import pp
+# job_server = pp.Server()
+# modules = ('sys', 'from time import time', 'numpy as N', 'scipy.sparse',
+#            'from scipy.sparse import spdiags',
+#            'from bbspec.spec2d import resolution_from_icov')
+# jobs = list()
+# for b in opts.bundle:
+#     ispecmin = b*nspec_per_bundle
+#     ispecmax = ispecmin + nspec_per_bundle
+#     for iflux in range(fmin,fmax,fstep):
+#         print "Bundle %2d, flux bins %4d - %4d" % (b, iflux, iflux+fstep)
+#         args = (ispecmin, ispecmax, iflux, iflux+fstep)
+#         j = job_server.submit(ex.extract_subregion, args=args, modules=modules, callback=ex.update_subregion)
+#         jobs.append(j)
+# 
+# for i, j in enumerate(jobs):
+#     print "--- %d ---" % i
+#     j()
 
 #- Debug small output
 # ys = slice(900, 1050)
