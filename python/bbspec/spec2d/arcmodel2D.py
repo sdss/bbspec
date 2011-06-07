@@ -75,10 +75,8 @@ class arcmodel2D:
             #self.reqwave = n.array([0,1,4,5,10,14,15,16,25,26,28,29,30,32,33,34,35,36,37,38,39,40,41,42,44,45]) #00115982
             self.reqwave = n.array([4,5,9,12,13,15,19,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,43,44]) #00126630
         
-    def model_arc(self, bStart, bEnd):
-        bStart = int(bStart)
-        bEnd = int(bEnd)
-        loopBund =  bEnd - bStart + 1
+    def model_arc(self, i_bund):
+        i_bund = int(i_bund)
         #- make floating point errors fatal (fail early, fail often)
         n.seterr(all='raise')
 
@@ -103,108 +101,106 @@ class arcmodel2D:
         # define max order
         maxorder = 4
 
-        for i_bund in range(bStart, bEnd+1):
-            print i_bund
-            kcons = i_bund*arcmodel2D.fibBun
-            for i_actwave in range(0, self.nwavelen):
-                # declare variables
-                print good_wavelength.size,i_actwave
-                actwavelength = good_wavelength[i_actwave]
-                func = interpolate.interp1d(good_wavelength,goodwaveypos[:,fib[kcons]], kind='cubic')
-                yact = func(actwavelength)
-                y1 = round(yact) -10 
-                y2 = round(yact) +10                                                                                                 
-                x1 = round(xpos_final[round(yact),fib[kcons]])
-                x2 = round(xpos_final[round(yact),fib[kcons+19]])
-                x1im = (x1)-10
-                x2im = (x2)+10
-                y1im = (y1)-10
-                y2im = (y2)+10
-                fibcons = n.arange(kcons,kcons+arcmodel2D.fibBun,1)
-                rowimage = self.biasSubImg[y1im:y2im+1,x1im:x2im+1]
-                x_pix = n.arange(x1im,x2im+1,1)  
-                y_pix  = n.arange(y1im,y2im+1,1)
-                numx = len(x_pix)  
-                numy = len(y_pix)
-                numk = len(fibcons) 
-                numlambda_val = 1
-                flag = 0 
-                n_k = n.zeros((len(fibcons),1))
-                basisfuncstack = n.zeros((numlambda_val,numk,numy,numx))
-                basisstack = n.zeros((numy*numx,1))
-                mm = 0 ; nn = 0
-                # Creating basis function
-                for mor in range (0,maxorder+1):
-                    for nor in range (0, maxorder+1):
-                        if (mor+nor <= 4):
-                            mm = n.hstack((mm,mor))
-                            nn = n.hstack((nn,nor))
-                            [ff, basisfunc, basisimage,flag,xcenarr,ycenarr, sigmaarr] = self.create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSigma,flatSigma,rowimage,x1im,x2im,y1im,y2im,fiberflat,kcons,mor,nor) 
-                            # checking if all values are non-zero
-                            if (flag == 1):
-                                basisfuncstack = n.hstack((basisfuncstack,basisfunc))
-                                basisstack = n.hstack((basisstack,basisimage))
-                            else:
-                                break 
-                    if (flag == 0):
-                        break
+        kcons = i_bund*arcmodel2D.fibBun
+        for i_actwave in range(0, self.nwavelen):
+            # declare variables
+            print good_wavelength.size,i_actwave
+            actwavelength = good_wavelength[i_actwave]
+            func = interpolate.interp1d(good_wavelength,goodwaveypos[:,fib[kcons]], kind='cubic')
+            yact = func(actwavelength)
+            y1 = round(yact) -10 
+            y2 = round(yact) +10                                                                                                 
+            x1 = round(xpos_final[round(yact),fib[kcons]])
+            x2 = round(xpos_final[round(yact),fib[kcons+19]])
+            x1im = (x1)-10
+            x2im = (x2)+10
+            y1im = (y1)-10
+            y2im = (y2)+10
+            fibcons = n.arange(kcons,kcons+arcmodel2D.fibBun,1)
+            rowimage = self.biasSubImg[y1im:y2im+1,x1im:x2im+1]
+            x_pix = n.arange(x1im,x2im+1,1)  
+            y_pix  = n.arange(y1im,y2im+1,1)
+            numx = len(x_pix)  
+            numy = len(y_pix)
+            numk = len(fibcons) 
+            numlambda_val = 1
+            flag = 0 
+            n_k = n.zeros((len(fibcons),1))
+            basisfuncstack = n.zeros((numlambda_val,numk,numy,numx))
+            basisstack = n.zeros((numy*numx,1))
+            mm = 0 ; nn = 0
+            # Creating basis function
+            for mor in range (0,maxorder+1):
+                for nor in range (0, maxorder+1):
+                    if (mor+nor <= 4):
+                        mm = n.hstack((mm,mor))
+                        nn = n.hstack((nn,nor))
+                        [ff, basisfunc, basisimage,flag,xcenarr,ycenarr, sigmaarr] = self.create_basisfunc(actwavelength,good_wavelength,goodwaveypos,xpos_final,arcSigma,flatSigma,rowimage,x1im,x2im,y1im,y2im,fiberflat,kcons,mor,nor) 
+                        # checking if all values are non-zero
+                        if (flag == 1):
+                            basisfuncstack = n.hstack((basisfuncstack,basisfunc))
+                            basisstack = n.hstack((basisstack,basisimage))
+                        else:
+                            break 
                 if (flag == 0):
-                    continue
-                
-
-                basis = n.sum(n.sum(basisfuncstack[:,:,:,:],axis = 1),axis = 0)
-                nk = n.shape(basisfunc)[1]
-                nlambda = n.shape(basisfunc)[0]
-                ni = n.shape(basisfunc)[2]
-                nj = n.shape(basisfunc)[3]
-
-                N = n.zeros((ni*nj,ni*nj))
-                invvr_sub = self.invvr[y1im:y2im+1,x1im:x2im+1]
-                flat_invvr = n.ravel(invvr_sub)
-                N = n.diag(flat_invvr)
-                
-                p = n.ravel(rowimage)
-                p1= n.zeros((len(p),1))
-                p1[:,0] = p
-                B1 = basisstack[:,1:]
-                scaledbasis = n.zeros((ni*nj ,1))
-                [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
-                GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
-                    
-                    # model image
-                scaledbasis = n.dot(B1, theta)
-                scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
-                scaledbasis1[:,0] = scaledbasis[:,0]
-                
-                #chi-squared value
-                ndiag = n.zeros((len(N),1))
-                ndiag[:,0] = n.diag(N)
-                nz = n.where(scaledbasis1 != 0)
-                err = (p1[nz]-scaledbasis1[nz])*n.sqrt(ndiag[nz])
-                chi_sqrd[i_actwave,i_bund,0] = n.mean(n.power(err,2))
-                scaledbasis.resize(ni,nj)                                                                                                                        
-                scaledbasis4 = scaledbasis
-                
-                # Residual values
-                residualGH = rowimage - scaledbasis
+                    break
+            if (flag == 0):
+                continue
             
-                xcenter[i_actwave,i_bund,:]  = xcenarr
-                ycenter[i_actwave,i_bund,:]  = ycenarr
-                sigma[i_actwave,i_bund,:]  = sigmaarr 
+
+            basis = n.sum(n.sum(basisfuncstack[:,:,:,:],axis = 1),axis = 0)
+            nk = n.shape(basisfunc)[1]
+            nlambda = n.shape(basisfunc)[0]
+            ni = n.shape(basisfunc)[2]
+            nj = n.shape(basisfunc)[3]
+
+            N = n.zeros((ni*nj,ni*nj))
+            invvr_sub = self.invvr[y1im:y2im+1,x1im:x2im+1]
+            flat_invvr = n.ravel(invvr_sub)
+            N = n.diag(flat_invvr)
             
-            #arcmodel2D.degree = 3
-                        
-            # loop to get the value of PSF parameters at all wavelengths    
-            for i_fib in range(0, arcmodel2D.fibBun):
-                for i_plot in range(1, len(mm)):
-                    wavecons   =  wavelength[:, i_bund*arcmodel2D.fibBun + i_fib]
-                    param = GHparam[self.reqwave, i_bund, mm[i_plot], nn[i_plot]]
-                    z = n.polyfit(good_wavelength[self.reqwave], param, arcmodel2D.degree)
-                    p = n.poly1d(z)
-                    coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
+            p = n.ravel(rowimage)
+            p1= n.zeros((len(p),1))
+            p1[:,0] = p
+            B1 = basisstack[:,1:]
+            scaledbasis = n.zeros((ni*nj ,1))
+            [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
+            GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
+                
+                # model image
+            scaledbasis = n.dot(B1, theta)
+            scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
+            scaledbasis1[:,0] = scaledbasis[:,0]
+            
+            #chi-squared value
+            ndiag = n.zeros((len(N),1))
+            ndiag[:,0] = n.diag(N)
+            nz = n.where(scaledbasis1 != 0)
+            err = (p1[nz]-scaledbasis1[nz])*n.sqrt(ndiag[nz])
+            chi_sqrd[i_actwave,i_bund,0] = n.mean(n.power(err,2))
+            scaledbasis.resize(ni,nj)                                                                                                                        
+            scaledbasis4 = scaledbasis
+            
+            # Residual values
+            residualGH = rowimage - scaledbasis
         
-        PSFArc = self.createPSFArc(GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,bStart)
-        PSFBasis = self.createPSFBasis(coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,bStart)
+            xcenter[i_actwave,i_bund,:]  = xcenarr
+            ycenter[i_actwave,i_bund,:]  = ycenarr
+            sigma[i_actwave,i_bund,:]  = sigmaarr 
+        
+        #arcmodel2D.degree = 3
+                    
+        # loop to get the value of PSF parameters at all wavelengths    
+        for i_fib in range(0, arcmodel2D.fibBun):
+            for i_plot in range(1, len(mm)):
+                wavecons   =  wavelength[:, i_bund*arcmodel2D.fibBun + i_fib]
+                param = GHparam[self.reqwave, i_bund, mm[i_plot], nn[i_plot]]
+                z = n.polyfit(good_wavelength[self.reqwave], param, arcmodel2D.degree)
+                p = n.poly1d(z)
+                coeffAll[i_fib, :, mm[i_plot], nn[i_plot]] = z
+        
+        PSFArc = self.createPSFArc(GHparam,xcenter, ycenter, sigma,good_wavelength,mm,nn,i_bund)
+        PSFBasis = self.createPSFBasis(coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn,i_bund)
         return (PSFArc , PSFBasis)
 
     # Function creates basis function at known wavelengths of arc-frames
@@ -295,7 +291,7 @@ class arcmodel2D:
         return(theta,t2,l1,t1,t2)
         
     # write to FITS file
-    def createPSFBasis(self, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, bStart):
+    def createPSFBasis(self, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, i_bund):
         theta0 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta1 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta2 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
@@ -335,9 +331,9 @@ class arcmodel2D:
         a = n.reshape(q, (self.ypoints,arcmodel2D.fibBun))
         ycenterf  = n.transpose(a)
         
-        xcenterf = n.transpose(xpos_final[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])
-        sigmaarrf = n.transpose(flatSigma[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun])
-        final_wavelength= n.transpose(n.log10(wavelength[:, bStart*arcmodel2D.fibBun : bStart*arcmodel2D.fibBun+arcmodel2D.fibBun]))
+        xcenterf = n.transpose(xpos_final[:, i_bund*arcmodel2D.fibBun : i_bund*arcmodel2D.fibBun+arcmodel2D.fibBun])
+        sigmaarrf = n.transpose(flatSigma[:, i_bund*arcmodel2D.fibBun : i_bund*arcmodel2D.fibBun+arcmodel2D.fibBun])
+        final_wavelength= n.transpose(n.log10(wavelength[:, i_bund*arcmodel2D.fibBun : i_bund*arcmodel2D.fibBun+arcmodel2D.fibBun]))
 
         hdu0 = pf.PrimaryHDU(xcenterf)
         hdu0.header.update('PSFTYPE', 'GAUSS-HERMITE', 'GAUSS-HERMITE POLYNOMIALS') 
@@ -402,13 +398,13 @@ class arcmodel2D:
         hdu18.header.update('PSFPARAM', 'PGH(4,0)', 'Pixelated Gauss-Hermite Order: (4,0)')
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
         
-        cols = {'arcid':self.arcid,'bStart':str(bStart).zfill(2)}
-        fname = self.outdir + "/spBasisPSF-GH4-%(arcid)s-%(bStart)s.fits" % cols
+        cols = {'arcid':self.arcid,'i_bund':str(i_bund).zfill(2)}
+        fname = self.outdir + "/spBasisPSF-GH4-%(arcid)s-%(i_bund)s.fits" % cols
         
         hdulist.writeto(fname, clobber=True)
         return (fname)
 
-    def createPSFArc(self, GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, bStart):
+    def createPSFArc(self, GHparam, xcenter, ycenter, sigma,good_wavelength,mm,nn, i_bund):
         xcenterf  = n.zeros((arcmodel2D.fibNo,self.nwavelen))
         ycenterf  = n.zeros((arcmodel2D.fibNo,self.nwavelen))
         sigmaarrf  = n.zeros((arcmodel2D.fibNo,self.nwavelen))
@@ -519,8 +515,8 @@ class arcmodel2D:
 
         hdulist = pf.HDUList([hdu0, hdu1, hdu2,hdu3,hdu4,hdu5,hdu6,hdu7,hdu8,hdu9,hdu10,hdu11,hdu12,hdu13,hdu14, hdu15, hdu16, hdu17, hdu18])
 
-        cols = {'arcid':self.arcid,'bStart':str(bStart).zfill(2)}
-        fname = self.outdir + "/spArcPSF-GH4-%(arcid)s-%(bStart)s.fits" % cols
+        cols = {'arcid':self.arcid,'i_bund':str(i_bund).zfill(2)}
+        fname = self.outdir + "/spArcPSF-GH4-%(arcid)s-%(i_bund)s.fits" % cols
 
         hdulist.writeto(fname, clobber=True)
         return (fname)
