@@ -228,9 +228,9 @@ class PSFPixelated(PSFBase):
         self.param['LogLam'] = fx[2].data
         
         #- Additional headers are a custom format for the pixelated psf
-        self.nexp    = fx[3].data  #- icoeff xexp yexp
-        self.xyscale = fx[4].data  #- ifiber igroup x0 xscale y0 yscale
-        self.psfimage = fx[5].data #- [igroup, icoeff, iy, ix]
+        self.nexp     = fx[3].data.view(N.ndarray)  #- icoeff xexp yexp
+        self.xyscale  = fx[4].data.view(N.ndarray)  #- ifiber igroup x0 xscale y0 yscale
+        self.psfimage = fx[5].data.view(N.ndarray)  #- [igroup, icoeff, iy, ix]
         
         
     def pix(self, ispec, iflux):
@@ -240,11 +240,11 @@ class PSFPixelated(PSFBase):
         returns xslice, yslice, pixels[yslice, xslice]
         """
         #- Get fiber group and scaling factors for this spectrum
-        igroup = self.xyscale['igroup'][ispec]
-        x0     = self.xyscale['x0'][ispec]
-        xscale = self.xyscale['xscale'][ispec]
-        y0     = self.xyscale['y0'][ispec]
-        yscale = self.xyscale['yscale'][ispec]
+        igroup = self.xyscale['IGROUP'][ispec]
+        x0     = self.xyscale['X0'][ispec]
+        xscale = self.xyscale['XSCALE'][ispec]
+        y0     = self.xyscale['Y0'][ispec]
+        yscale = self.xyscale['YSCALE'][ispec]
         
         #- Get x and y centroid for this spectrum and flux bin
         x = self.param['X'][ispec, iflux]
@@ -257,8 +257,8 @@ class PSFPixelated(PSFBase):
         #- Generate PSF image at (x,y)
         psfimage = N.zeros(self.psfimage.shape[2:4])
         for i in range(self.psfimage.shape[1]):
-            nx = self.nexp['xexp'][i]
-            ny = self.nexp['yexp'][i]
+            nx = self.nexp['XEXP'][i]
+            ny = self.nexp['YEXP'][i]
             psfimage += xx**nx * yy**ny * self.psfimage[igroup, i]
                                 
         #- Sinc Interpolate
