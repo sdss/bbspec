@@ -245,7 +245,7 @@ class SimpleExtractor(Extractor):
         xspec1 = N.dot(R, xspec0.ravel()).reshape(xspec0.shape)
 
         #- Variance of extracted reconvolved spectrum
-        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
+        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schlegel 2010 Eqn 15
         xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
         xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
         
@@ -354,12 +354,22 @@ class SimpleExtractor(Extractor):
         #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
         #- so use full A.T A matrix
         R = resolution_from_icov(ATA)
+        
+        #--- TEST : Try subblocks of ATA before calculating R ---
+        # B = N.zeros(ATA.shape)
+        # for ispec in range(psf.nspec):
+        #     lo = ispec*psf.nflux
+        #     hi = lo + psf.nflux
+        #     B[lo:hi, lo:hi] = ATA[lo:hi, lo:hi]
+        # R = resolution_from_icov(B)
+        #--- end TEST ---
+                
         ### _timeit('Find R')
         xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
         ### _timeit('Reconvolve')
 
         #- Variance of extracted reconvolved spectrum
-        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schelgel 2010 Eqn 15
+        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schlegel 2010 Eqn 15
         xspec_ivar = (1.0/Cx.diagonal()).reshape(xspec1.shape)
         _timeit('Calculate Variance')
         
