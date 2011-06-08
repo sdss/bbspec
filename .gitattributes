@@ -17,6 +17,7 @@ examples/pix2spec.py -text
 examples/plot_test_results.py -text
 examples/sdProc-r1-00122444.fits -text
 examples/spArc-r1-00122444.fits.gz -text
+examples/spBasisPSF-r1-00115982.fits -text svneol=unset#unset
 examples/spBasisPSFold-r1-00122444.fits -text svneol=unset#unset
 examples/spFlat-r1-00122445.fits.gz -text
 examples/spec2pix.py -text
