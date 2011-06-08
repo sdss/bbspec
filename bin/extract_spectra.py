@@ -95,7 +95,8 @@ if opts.parallel:
     
 #--- TEST ---
 if opts.test:
-    from multiprocessing import Process, cpu_count
+    from multiprocessing import Process, Queue, cpu_count
+    results = Queue()
     for b in opts.bundle:
         ispecmin = b*nspec_per_bundle
         ispecmax = ispecmin + nspec_per_bundle
@@ -105,16 +106,24 @@ if opts.test:
             ifluxhi = min(psf.nflux, iflux+fstep)
             print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
         
-            args = (ispecmin, ispecmax, ifluxlo, ifluxhi)
+            args = (ispecmin, ispecmax, ifluxlo, ifluxhi, None, results)  #- gack
             p = Process(target=ex.extract_subregion, args=args)
             p.start()
             jobs.append(p)
             
             #- Stop and wait if we've filled up the number of CPUs
-            if len(jobs) == cpu_count():
+            if len(jobs) == cpu_count():                    
                 for job in jobs:
-                    job.join()
+                    ### print 'Getting results from queue...'
+                    ex.update_subregion(results.get())
+                    
                 jobs = list()
+                
+        #- Catchup on any leftover jobs
+        for job in jobs:
+            ### print 'Getting leftover results from queue...'
+            ex.update_subregion(results.get())
+            
 else:
     for b in opts.bundle:
         if b < 0 or b > 24:  #- Hardcode bundle range!

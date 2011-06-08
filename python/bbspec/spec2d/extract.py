@@ -158,7 +158,8 @@ class SimpleExtractor(Extractor):
         Ax = scipy.sparse.hstack( (A, B) )
         return Ax
 
-    def extract_subregion(self, speclo, spechi, fluxlo, fluxhi, bkgorder=None):
+    def extract_subregion(self, speclo, spechi, fluxlo, fluxhi, bkgorder=None,
+        results_queue=None):
         """
         Extract just a subset of the spectra instead of all of them
         """
@@ -265,6 +266,8 @@ class SimpleExtractor(Extractor):
         result['yhi'] = yhi
         
         self.update_subregion(result)
+        if results_queue is not None:
+            results_queue.put(result)
         
         return result
                                 
@@ -285,6 +288,8 @@ class SimpleExtractor(Extractor):
         ylo, yhi = results['ylo'], results['yhi']
         speclo, spechi = results['speclo'], results['spechi']
         fluxlo, fluxhi = results['fluxlo'], results['fluxhi']
+        
+        print "updating [%d:%d, %d:%d]" % (ylo, yhi, xlo, xhi)
         
         self._model[ylo:yhi, xlo:xhi] = results['image_model']
         self._spectra[speclo:spechi, fluxlo:fluxhi] = results['spectra']
