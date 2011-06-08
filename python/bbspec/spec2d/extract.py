@@ -172,14 +172,21 @@ class SimpleExtractor(Extractor):
         yhi = min(psf.npix_y, int(psf.param['Y'][speclo:spechi, fluxhi-1].max()))
         
         #- Experimental: Add some boundary in x and y
-        xlo = max(0, xlo-8)
-        xhi = min(xhi+8, psf.npix_x)
+        dx, dy = 8, 5
         
-        ylo = max(0, ylo-5)
-        yhi = min(yhi+5, psf.npix_y)
+        xlo = max(0, xlo-dx)
+        xhi = min(xhi+dx, psf.npix_x)
+        
+        ylo = max(0, ylo-dy)
+        yhi = min(yhi+dy, psf.npix_y)
         
         nx = xhi - xlo
         ny = yhi - ylo
+
+        #- Check boundaries
+        if ny < 2*dy:
+            print "ERROR: extracting too narrow of a sub-region near a boundary"
+            dy = 0  #- don't trim edges of returned pixels
 
         #- Extract a larger range in wavelength, then trim down later
         dflo = min(fluxlo, 10)
@@ -255,15 +262,18 @@ class SimpleExtractor(Extractor):
         result['spectra'] = xspec1[:, dflo:dflo+nflux]
         result['ivar'] = xspec_ivar[:, dflo:dflo+nflux]
         result['deconvolved_spectra'] = xspec0[:, dflo:dflo+nflux]
-        result['image_model'] = model
+        if dy > 2:
+            result['image_model'] = model[dy:-dy+1, :]
+        else:
+            dy = 0
         result['speclo'] = speclo
         result['spechi'] = spechi
         result['fluxlo'] = fluxlo
         result['fluxhi'] = fluxhi
         result['xlo'] = xlo
         result['xhi'] = xhi
-        result['ylo'] = ylo
-        result['yhi'] = yhi
+        result['ylo'] = ylo+dy
+        result['yhi'] = yhi-dy+1
         
         self.update_subregion(result)
         if results_queue is not None:
