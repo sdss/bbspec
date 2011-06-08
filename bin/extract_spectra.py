@@ -79,7 +79,8 @@ ex = SimpleExtractor(image, ivar, psf)
 
 #- If we are running in parallel, we have to store the results in a queue
 #- and get them back out to update the extraction object, since the actual
-#- parallel extraction object is a copy, not the same as the original
+#- parallel extraction object is a copy, not the same as the original.
+#- This could be refactored to be cleaner for parallel vs. non
 results = Queue()
 
 #- Loop over bundles and fibers

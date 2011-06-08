@@ -18,6 +18,7 @@ try:
 	warnings.simplefilter("ignore", N.ComplexWarning)
 except   AttributeError:
 	pass
+	
 #- Checkpoint for timing tests
 t0 = time()
 def checkpoint(comment=None):
@@ -415,6 +416,16 @@ class PSFGaussHermite2D(PSFBase):
                 self.nvalues.append(thisn)
                 self.ordernames.append(thisname)
 
+        #- Pre-calculate the coefficients at all wavelengths
+        waverange = N.power(10, self.param['LogLam'])
+        self.coeffVal = dict()
+        for iorder in range(len(self.ordernames)):
+            self.coeffVal[iorder] = N.empty(waverange.shape)
+            fitcoeff = self.param[self.ordernames[iorder]]
+            for ispec in range(self.nspec):
+                coeff  = N.poly1d(fitcoeff[ispec])
+                self.coeffVal[iorder][ispec] = coeff(waverange[ispec])
+
     def pix(self, ispec, iflux):
         """
         Evaluate PSF for a given spectrum and flux bin
@@ -456,25 +467,20 @@ class PSFGaussHermite2D(PSFBase):
         #- Faster
         xfuncs = self.pgh.eval(xbase, xc=dxcen, sigma=sigma)
         yfuncs = self.pgh.eval(ybase, xc=dycen, sigma=sigma)
-            
+        
         # Build the output image:
         outimage = N.zeros((ny, nx), dtype=float)
-
-        waverange = N.power(10,logwave)		
         
         #for iorder in range(len(self.ordernames)):
-        # 	outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
+        #    outimage += self.param[self.ordernames[iorder]][ispec, iflux] * \
         #             N.outer(yfuncs[self.nvalues[iorder]], xfuncs[self.mvalues[iorder]])
 
         # Corrected to include new fits file struture which does not store the actual value of PSF parameters but the 
         # polynomial coefficients from which they can be obtained.
         for iorder in range(len(self.ordernames)):
-            fitcoeff = self.param[self.ordernames[iorder]][ispec, :]		
-            coeff  = N.poly1d(fitcoeff) 
-            coeffVal = coeff(waverange)
+            coeffVal = self.coeffVal[iorder]  #- pre-cached coefficients
             outimage += coeffVal[ispec, iflux] * \
                         N.outer(yfuncs[self.nvalues[iorder]],xfuncs[self.mvalues[iorder]])
 
-        # print outimage	
         # Pack up and return:
         return xslice, yslice, outimage

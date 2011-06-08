@@ -4,7 +4,7 @@
 #- and exercise various steps of the code
 
 #- Filenames
-PSF_FILE="spBasisPSF-Gauss2D-TEST.fits"
+PSF_FILE="spBasisPSF-G2D-TEST.fits"
 SPEC_FILE="input_spectra-TEST.fits"
 IMAGE_FILE="sdProc-Gauss2D-TEST.fits"
 XSPEC_FILE="extracted_spectra-TEST.fits"

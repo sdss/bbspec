@@ -33,7 +33,8 @@ xspec0 = pyfits.getdata(opts.xspec, 3)  #- un-convolved spectra
 cspec = N.dot(R, inspec.ravel()).reshape(inspec.shape)
 
 #- Load inputs 
-image = pyfits.getdata(opts.image)
+image = pyfits.getdata(opts.image, 0)
+image_ivar = pyfits.getdata(opts.image, 1)
 psf = load_psf(opts.psf)
 model = pyfits.getdata(opts.model)
 
@@ -47,21 +48,29 @@ model = pyfits.getdata(opts.model)
 #- Plots!
 P.figure()
 P.subplots_adjust(bottom=0.05)
-P.subplot(221)
+P.subplot(231)
 for i in range(nspec):
     P.plot(xspec[i]+i*50, lw=2)
     P.plot(cspec[i]+i*50, 'k-')
 P.title('Extracted Re-convolved Spectra')
 
-P.subplot(222)
+P.subplot(232)
 chi = (cspec - xspec) * N.sqrt(xspec_ivar)
 chi = chi.ravel()
 P.hist(chi, 50, (-10, 10), histtype='stepfilled')
-P.xlabel('(data - fit) / error')
+P.xlabel('Spectra (data - fit) / error')
 # print chi.mean(), chi.std()
 ymin, ymax = P.ylim()
 P.text(-9, ymax*0.9, "$\sigma=%.1f$" % chi.std())
-    
+
+P.subplot(233)
+chi = ((model-image) * N.sqrt(image_ivar)).ravel()
+P.hist(chi, 50, (-10, 10), histtype='stepfilled')
+P.xlabel('Image (data - fit) / error')
+ymin, ymax = P.ylim()
+P.text(-9, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+
+#- Lower row of images    
 vmin = N.min(image)
 vmax = N.max(image)
 opts = dict(interpolation='nearest', origin='lower', vmin=vmin, vmax=vmax)    

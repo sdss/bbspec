@@ -37,7 +37,7 @@ def psf_params(x0, y0):
     return spatially dependent PSF parameters:
     amplitude, major axis, minor axis, angle
     """
-    ### a, b = 2.0, 2.0   #- ellipse major and minor axes in center
+    ### a, b = 4.0, 4.0   #- ellipse major and minor axes in center
     a, b = 1.0, 1.0   #- ellipse major and minor axes in center
     c = 1.0           #- amplitude
     
