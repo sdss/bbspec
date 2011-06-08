@@ -104,6 +104,9 @@ if opts.test:
         for iflux in range(fmin,fmax,fstep):
             ifluxlo = max(0, iflux)
             ifluxhi = min(psf.nflux, iflux+fstep)
+            if ifluxhi - ifluxlo <= 0:
+                continue
+                
             print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
         
             args = (ispecmin, ispecmax, ifluxlo, ifluxhi, None, results)  #- gack

@@ -289,7 +289,7 @@ class SimpleExtractor(Extractor):
         speclo, spechi = results['speclo'], results['spechi']
         fluxlo, fluxhi = results['fluxlo'], results['fluxhi']
         
-        print "updating [%d:%d, %d:%d]" % (ylo, yhi, xlo, xhi)
+        ### print "updating [%d:%d, %d:%d]" % (ylo, yhi, xlo, xhi)
         
         self._model[ylo:yhi, xlo:xhi] = results['image_model']
         self._spectra[speclo:spechi, fluxlo:fluxhi] = results['spectra']
