@@ -33,6 +33,7 @@ python/bbspec/spec2d/extract.py -text
 python/bbspec/spec2d/func_arcmodel2D.py -text
 python/bbspec/spec2d/psf.py -text
 python/pbs/__init__.py -text
+python/pbs/batch.py -text
 python/pbs/job.py -text
 python/pbs/server.qsub -text
 ups/bbspec.table -text
