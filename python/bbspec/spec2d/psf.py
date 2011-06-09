@@ -425,7 +425,7 @@ class PSFGaussHermite2D(PSFBase):
             for ispec in range(self.nspec):
                 coeff  = N.poly1d(fitcoeff[ispec])
                 self.coeffVal[iorder][ispec] = coeff(waverange[ispec])
-
+                
     def pix(self, ispec, iflux):
         """
         Evaluate PSF for a given spectrum and flux bin

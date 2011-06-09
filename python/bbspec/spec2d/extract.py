@@ -7,13 +7,13 @@ a separate subdir product/module
 
 import sys
 from time import time
+import pyfits
 
 import numpy as N
 import scipy.sparse
 from scipy.sparse import spdiags
 
 from bbspec.spec2d import resolution_from_icov
-
 
 class Extractor(object):
     """Base class for extraction objects to define interface"""
@@ -43,7 +43,40 @@ class Extractor(object):
         Sub-classes should implement this.
         """
         raise NotImplementedError
-                
+
+    def writeto(self, filename):
+        """
+        Write the results of this extraction to filename
+        """
+        print "Writing output to", filename
+        hdus = list()
+        hdus.append(pyfits.PrimaryHDU(data = self.spectra))       #- 0
+        hdus.append(pyfits.ImageHDU(data = self.ivar))            #- 1
+
+        # hdus.append(pyfits.ImageHDU(data = self.resolution))    #- 2
+        hdus.append(pyfits.ImageHDU(data = None))
+
+        hdus.append(pyfits.ImageHDU(data = self.deconvolved_spectra)) #- 3
+
+        # hdus.append(pyfits.ImageHDU(data = self.dspec_icov))    #- 4
+        hdus.append(pyfits.ImageHDU(data = None))
+
+        hdus.append(pyfits.ImageHDU(data = self.model))           #- 5
+
+        hdus = pyfits.HDUList(hdus)
+        hdus[0].header.add_comment('Extracted re-convolved spectra')
+        # hdus[0].header.add_comment('Input image: %s' % opts.image)
+        # hdus[0].header.add_comment('Input PSF: %s' % opts.psf)
+
+        hdus[1].header.add_comment('Inverse variance of extracted re-convolved spectra')
+        hdus[2].header.add_comment('Convolution kernel R')
+        hdus[3].header.add_comment('Original extracted spectra')
+        hdus[4].header.add_comment('Inverse covariance of original extracted spectra')
+        hdus[5].header.add_comment('Reconstructed model image')
+
+        hdus.writeto(filename, clobber=True)
+
+
     #- python properties are a way to implement read-only attributes
     #- for objects.  The following code is a way to put in the base
     #- class that all Extractors should have X.spectra, etc. without
@@ -207,9 +240,9 @@ class SimpleExtractor(Extractor):
 
         #- Noise weight A and pixels
         #- Ni = (N)^-1
-        Ni = spdiags(N.sqrt(ivar.ravel()), [0,], A.shape[0], A.shape[0])
+        Ni = spdiags(ivar.ravel(), [0,], A.shape[0], A.shape[0])
         NiA = Ni.dot(A)
-        p = (image*N.sqrt(ivar)).ravel()
+        p = (image*ivar).ravel()
         
         #- Spectra extend beyond pixels, so add a normalization term to
         #- avoid singularity: unconstrained spectra should -> 0
@@ -317,9 +350,8 @@ class SimpleExtractor(Extractor):
         #- shortcuts
         psf = self._psf
         image = self._image
-        ivar = self._image_ivar
-        sqrt_ivar = N.sqrt(ivar).ravel()
-        p = (image.ravel() * sqrt_ivar)
+        ivar = self._image_ivar.ravel()
+        p = image.ravel() * ivar
             
         #- Generate the matrix to solve
         _timeit()
@@ -327,9 +359,9 @@ class SimpleExtractor(Extractor):
         ### _timeit('Get Sparse A')
         
         #- construct sparse diagonal noise matrix
-        ixy = N.arange(len(sqrt_ivar))
+        ixy = N.arange(len(ivar))
         npix = psf.npix_x * psf.npix_y
-        Ni = scipy.sparse.coo_matrix( (sqrt_ivar, (ixy, ixy)), shape=(npix, npix) )
+        Ni = scipy.sparse.coo_matrix( (ivar, (ixy, ixy)), shape=(npix, npix) )
         
         NiAx = Ni.dot(Ax)
         ATAx = Ax.T.dot(NiAx)
