@@ -20,13 +20,17 @@ class arcmodel2D:
         self.color = None
         self.reqwave = None
         
+    def model_arc_flat_bundle(self,arcid,flatid,i_bund):
+        self.setarc_flat(arcid,flatid)
+        return self.model_arc(i_bund)
+        
     def setarc_flat(self,arcid,flatid):
         self.arcid = arcid
         self.flatid = flatid
         self.setcolor()
             
-        spArc_file = self.indir + '/spArc-' + self.arcid + '.fits.gz' 
-        spFlat_file = self.indir + '/spFlat-' + self.flatid + '.fits.gz' 
+        spArc_file = self.indir + '/spArc-' + self.arcid + '.fits' 
+        spFlat_file = self.indir + '/spFlat-' + self.flatid + '.fits' 
         data_file = self.indir + '/sdProc-' + self.arcid + '.fits' 
 
         # Data & invvar from sdR files
@@ -251,8 +255,8 @@ class arcmodel2D:
             n_kVal = func_n_k(ypix)
             # relative fiber throughput (n_k) changed to take value from spFlat files.
 	n_k[i_k,0] = n_kVal
-	n_kzero= where(n_k[:,0] == 0)
-	if (shape(n_kzero)[1] > 0 ):
+	n_kzero= n.where(n_k[:,0] == 0)
+	if (n.shape(n_kzero)[1] > 0 ):
 		flag = 0
 		#return(n_k,zero1,zero2,flag,datacenterval)
 		return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
