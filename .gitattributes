@@ -26,6 +26,7 @@ examples/spec2pix.py -text
 examples/test.txt -text
 examples/test_data_model.sh -text
 examples/testarcmodel.py -text
+examples/view_psf.py -text
 python/bbspec/__init__.py -text
 python/bbspec/spec2d/__init__.py -text
 python/bbspec/spec2d/airtovac.py -text
