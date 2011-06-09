@@ -31,7 +31,7 @@ spectra = N.zeros( (psf.nspec, psf.nflux) )
 #- Add background continuua
 x = N.arange(psf.nflux) * 2 * N.pi / psf.nflux
 for i in range(psf.nspec):
-    c = N.random.uniform(500)
+    c = N.random.uniform(300)
     phase = N.random.uniform(N.pi)
     spectra[i] += c*N.abs(N.sin(x-phase))
 
@@ -39,7 +39,7 @@ for i in range(psf.nspec):
 for test in range(100):
     i = N.random.randint(psf.nspec)
     j = N.random.randint(psf.nflux)
-    c = N.random.uniform(0, 1000)
+    c = N.random.uniform(0, 500)
     spectra[i,j] += c
     
 #- Write output

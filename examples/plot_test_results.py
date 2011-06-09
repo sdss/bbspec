@@ -38,39 +38,38 @@ image_ivar = pyfits.getdata(opts.image, 1)
 psf = load_psf(opts.psf)
 model = pyfits.getdata(opts.model)
 
-#- Recreate model image
-# model = N.zeros( (psf.npix_y, psf.npix_x) )
-# for i in range(nspec):
-#     for j in range(nflux):
-#         xslice, yslice, pix = psf.pix(i, j)
-#         model[yslice, xslice] += xspec0[i, j] * pix
-
 #- Plots!
 P.figure()
 P.subplots_adjust(bottom=0.05)
+
+#- Spectra
 P.subplot(231)
 for i in range(nspec):
-    P.plot(xspec[i]+i*50, lw=2)
+    P.plot(xspec[i]+i*50, lw=2, drawstyle='steps-mid')
     P.plot(cspec[i]+i*50, 'k-')
 P.title('Spectra')
 
+#- Flux chi
 P.subplot(232)
 chi = (cspec - xspec) * N.sqrt(xspec_ivar)
 chi = chi.ravel()
-P.hist(chi, 50, (-10, 10), histtype='stepfilled')
+P.hist(chi, 50, (-5, 5), histtype='stepfilled')
 P.title('Spectra chi')
 # P.xlabel('Spectra (data - fit) / error')
 # print chi.mean(), chi.std()
 ymin, ymax = P.ylim()
-P.text(-9, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.text(-4.5, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.xlim(-5, 5)
 
+#- Pixel chi
 P.subplot(233)
 chi = ((model-image) * N.sqrt(image_ivar)).ravel()
-P.hist(chi, 50, (-10, 10), histtype='stepfilled')
+P.hist(chi, 50, (-5, 5), histtype='stepfilled')
 P.title('Pixel chi')
 # P.xlabel('Image (data - fit) / error')
 ymin, ymax = P.ylim()
-P.text(-9, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.text(-4.5, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.xlim(-5, 5)
 
 #- Lower row of images    
 vmin = N.min(image)
