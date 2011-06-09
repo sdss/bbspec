@@ -133,6 +133,7 @@ class arcmodel2D:
             basisfuncstack = n.zeros((numlambda_val,numk,numy,numx))
             basisstack = n.zeros((numy*numx,1))
             mm = 0 ; nn = 0
+	    	
             # Creating basis function
             for mor in range (0,maxorder+1):
                 for nor in range (0, maxorder+1):
@@ -297,7 +298,9 @@ class arcmodel2D:
         
     # write to FITS file
     def createPSFBasis(self, coeffAll, wavelength, xpos_final, flatSigma,good_wavelength,mm,nn, i_bund):
-        theta0 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
+	mm = [0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4]
+	nn = [0,0,1,2,3,4,0,1,2,3,0,1,2,0,1,0]        
+	theta0 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta1 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta2 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
         theta3 = n.zeros((arcmodel2D.fibBun,arcmodel2D.degree+1))
@@ -429,6 +432,9 @@ class arcmodel2D:
         theta13 = n.zeros((arcmodel2D.fibNo,self.nwavelen))
         theta14 = n.zeros((arcmodel2D.fibNo,self.nwavelen))
         final_wavelength  = n.zeros((arcmodel2D.fibNo,self.nwavelen))
+
+	mm = [0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4]
+	nn = [0,0,1,2,3,4,0,1,2,3,0,1,2,0,1,0]     
 
         for i_wave in range(0, self.nwavelen):
             theta0[:,i_wave]  = GHparam[i_wave, : , mm[1],nn[1]].repeat(arcmodel2D.fibBun)
