@@ -171,9 +171,9 @@ class arcmodel2D:
             scaledbasis = n.zeros((ni*nj ,1))
             [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
             GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
-    #print theta
+            print theta
                 
-                # model image
+            # model image
             scaledbasis = n.dot(B1, theta)
             scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
             scaledbasis1[:,0] = scaledbasis[:,0]
