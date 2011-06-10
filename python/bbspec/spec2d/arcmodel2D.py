@@ -171,8 +171,8 @@ class arcmodel2D:
             scaledbasis = n.zeros((ni*nj ,1))
             [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
             GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
-            print theta
-                
+            #print theta
+            #print i_actwave    
             # model image
             scaledbasis = n.dot(B1, theta)
             scaledbasis1 = n.zeros((len(scaledbasis[:,0]),1))
@@ -258,7 +258,7 @@ class arcmodel2D:
             # relative fiber throughput (n_k) changed to take value from spFlat files.
             n_k[i_k,0] = n_kVal
         n_kzero= n.where(n_k[:,0] == 0)
-        if (n.shape(n_kzero)[1] > 0 ):
+        if (n.shape(n_kzero)[1] > 15 ):
             flag = 0
             #return(n_k,zero1,zero2,flag,datacenterval)
             return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)

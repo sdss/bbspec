@@ -15,7 +15,7 @@ arcid = sys.argv[1]
 flatid = sys.argv[2]
 i_bund = int(sys.argv[3])
 
-m = arcmodel2D('.','.')
+m = arcmodel2D('00126630','.')
 m.setarc_flat(arcid,flatid)
 (f1, f2) = m.model_arc(i_bund)
 print 'Wrote '  + f1
