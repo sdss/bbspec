@@ -108,7 +108,7 @@ class arcmodel2D:
         kcons = i_bund*arcmodel2D.fibBun
         for i_actwave in range(0, self.nwavelen):
             # declare variables
-            print good_wavelength.size,i_actwave
+            #print good_wavelength.size,i_actwave
             actwavelength = good_wavelength[i_actwave]
             func = interpolate.interp1d(good_wavelength,goodwaveypos[:,fib[kcons]], kind='cubic')
             yact = func(actwavelength)
@@ -171,6 +171,7 @@ class arcmodel2D:
             scaledbasis = n.zeros((ni*nj ,1))
             [theta,t2,l1,t1,t2] = self.calparam(B1,N,p1)
             GHparam[i_actwave,i_bund,mm[1:],nn[1:]] = theta[:,0]/theta[0,0]
+	    #print theta	
                 
                 # model image
             scaledbasis = n.dot(B1, theta)
@@ -255,17 +256,17 @@ class arcmodel2D:
             func_n_k = interpolate.interp1d(self.yvalues,fiberflat[fibcons[i_k],:])
             n_kVal = func_n_k(ypix)
             # relative fiber throughput (n_k) changed to take value from spFlat files.
-            n_k[i_k,0] = n_kVal
-        n_kzero= n.where(n_k[:,0] == 0)
-        if (n.shape(n_kzero)[1] > 0 ):
-            flag = 0
-            #return(n_k,zero1,zero2,flag,datacenterval)
-            return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
-        else:	
-            basisimage = self.basisimg(basisfunc, n_k)
-            flag = 1		
-            #return (n_k,basisfunc, basisimage,flag,datacenterval) 
-            return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
+	    n_k[i_k,0] = n_kVal
+	n_kzero= n.where(n_k[:,0] == 0)
+	if (n.shape(n_kzero)[1] > 0 ):
+		flag = 0
+		#return(n_k,zero1,zero2,flag,datacenterval)
+		return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
+	else:	
+		basisimage = self.basisimg(basisfunc, n_k)
+		flag = 1		
+		#return (n_k,basisfunc, basisimage,flag,datacenterval) 
+		return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
 
     # supress the four dimensional basis function to two-dimensional
     def basisimg(self, A00, n_k):
@@ -433,9 +434,8 @@ class arcmodel2D:
         theta14 = n.zeros((arcmodel2D.fibNo,self.nwavelen))
         final_wavelength  = n.zeros((arcmodel2D.fibNo,self.nwavelen))
 
-        mm = [0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4]
-        nn = [0,0,1,2,3,4,0,1,2,3,0,1,2,0,1,0]     
-
+	mm = [0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4]
+	nn = [0,0,1,2,3,4,0,1,2,3,0,1,2,0,1,0]     
         for i_wave in range(0, self.nwavelen):
             theta0[:,i_wave]  = GHparam[i_wave, : , mm[1],nn[1]].repeat(arcmodel2D.fibBun)
             theta1[:,i_wave]   = GHparam[i_wave, : , mm[2],nn[2]].repeat(arcmodel2D.fibBun)
