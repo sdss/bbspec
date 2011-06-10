@@ -255,17 +255,17 @@ class arcmodel2D:
             func_n_k = interpolate.interp1d(self.yvalues,fiberflat[fibcons[i_k],:])
             n_kVal = func_n_k(ypix)
             # relative fiber throughput (n_k) changed to take value from spFlat files.
-	n_k[i_k,0] = n_kVal
-	n_kzero= n.where(n_k[:,0] == 0)
-	if (n.shape(n_kzero)[1] > 0 ):
-		flag = 0
-		#return(n_k,zero1,zero2,flag,datacenterval)
-		return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
-	else:	
-		basisimage = basisimg(basisfunc, n_k)
-		flag = 1		
-		#return (n_k,basisfunc, basisimage,flag,datacenterval) 
-		return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
+            n_k[i_k,0] = n_kVal
+        n_kzero= n.where(n_k[:,0] == 0)
+        if (n.shape(n_kzero)[1] > 0 ):
+            flag = 0
+            #return(n_k,zero1,zero2,flag,datacenterval)
+            return(n_k,zero1,zero2,flag,xcenarr,ycenarr,sigmaarr)
+        else:	
+            basisimage = self.basisimg(basisfunc, n_k)
+            flag = 1		
+            #return (n_k,basisfunc, basisimage,flag,datacenterval) 
+            return (n_k,basisfunc, basisimage,flag,xcenarr, ycenarr, sigmaarr) 	
 
     # supress the four dimensional basis function to two-dimensional
     def basisimg(self, A00, n_k):
