@@ -137,9 +137,111 @@ class Extractor(object):
         """
         return self._bkg_model
 
+#-------------------------------------------------------------------------
+
+class Boundaries(object):
+    """
+    Utility class for calculating pixel and spectral boundaries given
+    a spectral range to extract
+    """
+    def __init__(self, psf, speclo, spechi, fluxlo, fluxhi):
+        """
+        Given a spectra range and fluxbin range to extract, create an
+        object which defines:
+        
+        - Image pixel range to use [ymin:ymax, xmin:xmax]
+        - Which pixel range will be valid for projection [ylo:yhi, xlo:xhi]
+        - Spectral range to extract [specmin:specmax, fluxmin:fluxmax]
+        - Spectra valid for final answer: inputs [speclo:spechi, fluxlo:fluxhi]
+        
+        Utility values, which could be derived from the others:
+        - pixel boundaries: dylo, dyhi, dxlo, dxhi
+        - spectra boundaries: dfluxlo, dfluxhi, dspeclo, dspechi
+        
+        BUGS:
+        - Adds x boundaries assuming edge of bundles without cross talk
+        """
+    
+        #- Inputs
+        self.speclo = speclo
+        self.spechi = spechi
+        self.fluxlo = fluxlo
+        self.fluxhi = fluxhi
+    
+        #- Find which pixels are at the center of these spectra
+        cxlo = int(psf.param['X'][speclo,   fluxlo:fluxhi].min())
+        cxhi = int(psf.param['X'][spechi-1, fluxlo:fluxhi].max())+1
+        cylo = int(psf.param['Y'][speclo:spechi, fluxlo  ].min())
+        cyhi = int(psf.param['Y'][speclo:spechi, fluxhi-1].max())+1
+
+        #- Add pixel boundaries to fully cover spectra of interest
+        dx = 8
+        self.xlo = max(cxlo-dx, 0)
+        self.xhi = min(cxhi+dx, psf.npix_x)
+        
+        #- Assume x boundaries at bundle edges without cross talk
+        self.xmin = self.xlo
+        self.xmax = self.xhi
+        self.specmin = self.speclo
+        self.specmax = self.spechi
+        
+        #- Explicitely calculate the boundary in case we change xlo==xmin, etc.
+        self.dxlo = self.xlo  - self.xmin
+        self.dxhi = self.xmax - self.xhi
+        self.dspeclo = self.speclo  - self.specmin
+        self.dspechi = self.specmax - self.spechi
+        
+        #- For y pixel extension, watch out for edges
+        dy = 5
+        self.dylo = min(dy, cylo)
+        self.dyhi = min(dy, psf.npix_y-cyhi)
+        
+        self.ylo = cylo
+        self.yhi = cyhi
+        self.ymin = self.ylo - self.dylo
+        self.ymax = self.yhi + self.dyhi
+
+        #- Add extra flux bins to avoid edge effects,
+        #- but don't exceed boundaries of the problems
+        self.dfluxlo = min(2*dy, self.fluxlo)
+        self.dfluxhi = min(2*dy, psf.nflux-self.fluxhi)
+        self.fluxmin = self.fluxlo - self.dfluxlo
+        self.fluxmax = self.fluxhi + self.dfluxhi
+
+        #- Count things : full ranges
+        self.nflux = self.fluxmax - self.fluxmin
+        self.nspec = self.specmax - self.specmin
+        self.nx = self.xmax - self.xmin
+        self.ny = self.ymax - self.ymin
+        
+        #- Count things: subrange of good pixels/spectra
+        self.nsubx = self.xhi - self.xlo
+        self.nsuby = self.yhi - self.ylo
+        self.nsubspec = self.spechi - self.speclo
+        self.nsubflux = self.fluxhi - self.fluxlo
+        
+        #- Slice objects for convenient
+        self.goodpix = (slice(self.ylo, self.yhi), slice(self.xlo, self.xhi))
+        self.goodsubpix = (slice(self.dylo, self.dylo+self.nsuby),
+                           slice(self.dxlo, self.dxlo+self.nsubx) )
+                           
+        self.goodspec = (slice(self.speclo, self.spechi),
+                         slice(self.fluxlo, self.fluxhi) )
+        self.goodsubspec = (slice(self.dspeclo, self.dspeclo+self.nsubspec),
+                            slice(self.dfluxlo, self.dfluxlo+self.nsubflux) )
+        
+    def __str__(self):
+        # print 'spec %d-%d flux %d-%d' % (speclo, spechi, flo, fhi)
+        x = 'spec %d-%d  flux %3d-%3d  flux+ %3d-%3d' % (self.speclo,
+            self.spechi, self.fluxlo, self.fluxhi, self.fluxmin, self.fluxmax)
+        x += ' : x %2d-%3d  y %2d-%3d ' % (self.xlo, self.xhi, self.ymin, self.ymax)
+        return x
+    
+#-------------------------------------------------------------------------
+
 class SubExtractor(Extractor):
     """
-    Extractor which supports parallel extraction of sub-regions
+    Extractor which pieces together extracted sub-regions
     """
     def __init__(self, image, image_ivar, psf):
         """
@@ -156,106 +258,75 @@ class SubExtractor(Extractor):
             # self.R.append(ResolutionMatrix(psf.nflux))
             self.R.append(ResolutionMatrix( (psf.nflux, psf.nflux) ))
 
-    def extract(self, speclo=None, spechi=None, fluxlo=None, fluxhi=None, fluxstep=None):
+    def extract(self, specmin=None, specmax=None, fluxmin=None, fluxmax=None, fluxstep=None):
         """
         Extract spectra within specified ranges
         """
         #- Default ranges
         psf = self._psf
-        if speclo is None: speclo = 0
-        if spechi is None: spechi = psf.nspec
-        if fluxlo is None: fluxlo = 0
-        if fluxhi is None: fluxhi = psf.nflux
+        if specmin is None: specmin = 0
+        if specmax is None: specmax = psf.nspec
+        if fluxmin is None: fluxmin = 0
+        if fluxmax is None: fluxmax = psf.nflux
         if fluxstep is None: fluxstep = 100
-        nspec = spechi - speclo
         
         #- Sanity check on boundaries
-        fluxlo = max(fluxlo, 0)
-        fluxhi = min(fluxhi, psf.nflux)
+        fluxmin = max(fluxmin, 0)
+        fluxmax = min(fluxmax, psf.nflux)
         
         #- Walk through subregions to extract
         _checkpoint()
-        for iflux in range(fluxlo, fluxhi, fluxstep):
-            #- Define flux range for this cutout
-            flo = iflux
-            fhi = min(flo+fluxstep, fluxhi)
+        for fluxlo in range(fluxmin, fluxmax, fluxstep):
             
-            #- Find which pixels are covered by these spectra
-            xlo = int(psf.param['X'][speclo, flo:fhi].min())
-            xhi = int(psf.param['X'][spechi-1, flo:fhi].max())
-            ylo = int(psf.param['Y'][speclo:spechi, flo].min())
-            yhi = int(psf.param['Y'][speclo:spechi, fhi-1].max())+1
-        
-            #- Add pixel boundaries to fully cover spectra of interest
-            dx = 8
-            xlo = max(xlo-dx, 0)
-            xhi = min(xhi+dx, psf.npix_x)
-
-            #- For y pixel extension, watch out for edges
-            dy = 5
-            dylo = min(dy, ylo)
-            dyhi = min(dy, psf.npix_y-yhi)
-
-            #- Add extra flux bins to avoid edge effects,
-            #- but don't exceed boundaries of the problems
-            dflo = min(2*dy, flo)
-            dfhi = min(2*dy, psf.nflux-fhi)
-            nflux = (fhi+dfhi) - (flo-dflo)
-                        
-            # print 'spec %d-%d flux %d-%d' % (speclo, spechi, flo, fhi)
-            print 'spec %d-%d  flux %3d-%3d  flux+ %3d-%3d' % \
-                (speclo, spechi, flo, fhi, flo-dflo, fhi+dfhi),
-            print ' x %3d-%3d  y %3d-%3d ' % (xlo, xhi, ylo-dylo, yhi+dyhi)
-
-            #--- DEBUG ---
-            # import pdb; pdb.set_trace()
-            #--- DEBUG ---
+            #- Get bounaries of this sub-region
+            fluxhi = min(fluxlo+fluxstep, fluxmax)
+            if fluxlo > fluxhi: break
+            B = Boundaries(psf, specmin, specmax, fluxlo, fluxhi)
+            print B
+                                    
+            #- Get image and ivar cutouts
+            pix  = self._image[B.ymin:B.ymax, B.xmin:B.xmax]
+            ivar = self._image_ivar[B.ymin:B.ymax, B.xmin:B.xmax]
 
             #- Get sparse projection matrix A
-            A = psf.getSparseAsub(speclo, spechi, flo-dflo, fhi+dfhi,
-                xlo, xhi, ylo-dylo, yhi+dyhi)
-
-            Anx = xhi-xlo
-            Any = (yhi+dyhi) - (ylo-dylo)
-
-            #- Get image and ivar cutouts
-            pix = self._image[ylo-dylo:yhi+dyhi, xlo:xhi]
-            ivar = self._image_ivar[ylo-dylo:yhi+dyhi, xlo:xhi]
+            A = psf.getSparseAsub(
+                B.specmin, B.specmax, B.fluxmin, B.fluxmax,
+                B.xmin, B.xmax, B.ymin, B.ymax )
         
             #- Solve it!
-            results = _solve(A, pix, ivar, nfluxbins=nflux)
-
-            #- Reshape
-            results['spectra'] = results['spectra'].reshape( (nspec, nflux) )
-            results['ivar'] = results['ivar'].reshape( results['spectra'].shape )
-            results['deconvolved_spectra'] = results['deconvolved_spectra'].reshape( results['spectra'].shape )
+            results = _solve(A, pix, ivar, boundaries=B)
             
-            #- Put the results into the bigger picture
-            self._model[ylo:yhi, xlo:xhi] = results['model'][dylo:dylo+(yhi-ylo), :]
-            self._spectra[speclo:spechi, flo:fhi] = results['spectra'][:, dflo:dflo+(fhi-flo)]
-            self._deconvolved_spectra[speclo:spechi, flo:fhi] = results['deconvolved_spectra'][:, dflo:dflo+(fhi-flo)]
-            self._ivar[speclo:spechi, flo:fhi] = results['ivar'][:, dflo:dflo+(fhi-flo)]
+            #- Save results
+            self.store_results(results=results, boundaries=B)
+                        
+    def store_results(self, results, boundaries):
+        """
+        Save results from sub-region into full output arrays
+        """
+        B = boundaries  #- shorthand
+        self._model[B.goodpix] = results['model'][B.goodsubpix]
+        self._spectra[B.goodspec] = results['spectra'][B.goodsubspec]
+        self._ivar[B.goodspec] = results['ivar'][B.goodsubspec]
+        self._deconvolved_spectra[B.goodspec] = results['deconvolved_spectra'][B.goodsubspec]
 
-            #--- DEBUG ---
-            # import pylab as P
-            # xspec = results['deconvolved_spectra']
-            # x0 = N.zeros(xspec.shape)
-            # x0[:, dflo:dflo+(fhi-flo)] = xspec[:, dflo:dflo+(fhi-flo)]
-            # model = A.dot(xspec.ravel()).reshape( (Any, Anx) )
-            # m0 = A.dot(x0.ravel()).reshape( (Any, Anx) )
-            # import pdb; pdb.set_trace()
-            #--- DEBUG ---
-
-            #- Get resolution matrix R cutouts
-            R = results['resolution']            
-            for ispec in range(nspec):
-                #- Slice out a piece of R for this spectrum, avoiding edges
-                ii = slice(ispec*nflux+dflo/2, (ispec+1)*nflux-dfhi/2)
-                Rx = R[ii, ii]
-                jj = slice(flo-dflo/2, flo-dflo/2+Rx.shape[0])
-                self.R[ispec][jj, jj] = R[ii, ii]
-            
+        #- Get resolution matrix R cutouts
+        #- WARNING: this will break if we add spectral boundaries
+        #- in addition to flux boundaries, so add asserts to catch it
+        assert(B.speclo == B.specmin)
+        assert(B.spechi == B.specmax)
+        R = results['resolution']            
+        for ispec in range(B.nspec):
+            #- Slice out a piece of R for this spectrum, avoiding edges
+            ii = slice(ispec*B.nflux+B.dfluxlo/2, (ispec+1)*B.nflux-B.dfluxhi/2)
+            Rx = R[ii, ii]
+            jj = slice(B.fluxlo-B.dfluxlo/2, B.fluxlo-B.dfluxlo/2+Rx.shape[0])
+            self.R[ispec][jj, jj] = R[ii, ii]
+                        
     def expand_resolution(self):
+        """
+        Expand individual sparse resolution matrices into 3D matrix of
+        diagonals for writing to a fits file.  Needs a better name.
+        """
         bandwidth = 15
         nspec = self._psf.nspec
         nflux = self._psf.nflux
@@ -267,7 +338,7 @@ class SubExtractor(Extractor):
 #-------------------------------------------------------------------------
 #- matrix solver
 
-def _solve(A, pix, ivar, nfluxbins, regularize=1e-6):
+def _solve(A, pix, ivar, boundaries=None, regularize=1e-6):
     """
     Solve pix[npix] = A[npix, nflux] * f[nflux] + noise[npix]
     
@@ -359,6 +430,12 @@ def _solve(A, pix, ivar, nfluxbins, regularize=1e-6):
     results['resolution'] = R
     results['model'] = model.reshape( (ny, nx) )
         
+    #- Reshape if boundaries are given
+    if boundaries is not None:
+        B = boundaries
+        for key in ('spectra', 'ivar', 'deconvolved_spectra'):
+            results[key] = results[key].reshape( (B.nspec, B.nflux) )    
+
     return results
 
 #-------------------------------------------------------------------------
