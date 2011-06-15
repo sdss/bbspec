@@ -9,6 +9,7 @@ import pylab as P
 import pyfits
 
 from bbspec.spec2d.psf import load_psf
+from bbspec.spec2d import ResolutionMatrix
 
 import optparse
 
@@ -24,19 +25,32 @@ opts, args = parser.parse_args()
 inspec = pyfits.getdata(opts.spectra)
 nspec, nflux = inspec.shape
 
-xspec = pyfits.getdata(opts.xspec, 0)   #- re-convolved spectra
-xspec_ivar = pyfits.getdata(opts.xspec, 1)   #- re-convolved spectra inverse variance
-R = pyfits.getdata(opts.xspec, 2)       #- re-convolving kernel
-xspec0 = pyfits.getdata(opts.xspec, 3)  #- un-convolved spectra
+#- Cast type to get endianness correct for sparse matrix ops
+inspec = inspec.astype(N.float64)
+
+rspec = pyfits.getdata(opts.xspec, 0)   #- re-convolved spectra
+rspec_ivar = pyfits.getdata(opts.xspec, 1)   #- re-convolved spectra inverse variance
+R = pyfits.getdata(opts.xspec, 2)       #- re-convolving kernels
+xspec = pyfits.getdata(opts.xspec, 3)  #- un-convolved spectra
 
 #- Input spectra, convolved with resolution
-cspec = N.dot(R, inspec.ravel()).reshape(inspec.shape)
+### cspec = N.dot(R, inspec.ravel()).reshape(inspec.shape)
+cspec = N.empty(inspec.shape)
+for i in range(nspec):
+    Rx = ResolutionMatrix.from_diagonals(R[i]).tocsr()
+    cspec[i] = Rx.dot(inspec[i])
+    
+    #- Alternate rspec, computed from saved R and xspec
+    ### rspec[i] = Rx.dot(xspec[i].astype(N.float64))
 
 #- Load inputs 
 image = pyfits.getdata(opts.image, 0)
 image_ivar = pyfits.getdata(opts.image, 1)
 psf = load_psf(opts.psf)
 model = pyfits.getdata(opts.model)
+
+#- Alternate model, computed during extractions
+model = pyfits.getdata(opts.xspec, 5)
 
 #- Plots!
 P.figure()
@@ -45,13 +59,13 @@ P.subplots_adjust(bottom=0.05)
 #- Spectra
 P.subplot(231)
 for i in range(nspec):
-    P.plot(xspec[i]+i*50, lw=2, drawstyle='steps-mid')
-    P.plot(cspec[i]+i*50, 'k-')
+    P.plot(rspec[i]+i*100, drawstyle='steps-mid')
+    P.plot(cspec[i]+i*100, 'k-')
 P.title('Spectra')
 
 #- Flux chi
 P.subplot(232)
-chi = (cspec - xspec) * N.sqrt(xspec_ivar)
+chi = (cspec - rspec) * N.sqrt(rspec_ivar)
 chi = chi.ravel()
 P.hist(chi, 50, (-5, 5), histtype='stepfilled')
 P.title('Spectra chi')
@@ -87,5 +101,7 @@ P.title('Model')
 P.subplot(236)
 P.imshow(10*(model-image), **opts)
 P.title('10x Residuals')
+
+P.savefig('blat.pdf')
 
 P.show()

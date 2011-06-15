@@ -13,6 +13,7 @@ MODEL_IMAGE_FILE="sdProc-model-TEST.fits"
 #- Run a command.  If it fails, print the command and exit.
 function runit
 {
+    echo "$@"
     eval "$@"
     if test $? -ne 0; then
         echo ABORT
@@ -39,7 +40,8 @@ echo "-- Projecting those spectra into pixels using the PSF"
 runit "python spec2pix.py -i $SPEC_FILE -p $PSF_FILE -o $IMAGE_FILE --hdu 0 --noise"
 
 echo "-- Extracting spectra from the image using the PSF"
-runit "python pix2spec.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE"
+### runit "python pix2spec.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE"
+runit "$BBSPEC_DIR/bin/extract_spectra.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE --fibers_per_bundle 10 -f 0,100,25"
 
 echo "-- Generating model image"
 runit "python spec2pix.py -i $XSPEC_FILE -p $PSF_FILE -o $MODEL_IMAGE_FILE --hdu 3"

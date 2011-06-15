@@ -52,7 +52,8 @@ for filename in args:
     #- Plot!
     P.figure(figsize=(11, 7.5))
     P.subplots_adjust(bottom=0.10, top=0.95, left=0.10, right=0.95)
-    P.imshow(image, interpolation='nearest', origin='lower', extent=extent, aspect='auto')
+    P.imshow(image, interpolation='nearest', origin='lower', extent=extent, 
+             aspect='auto', vmin=0.0, vmax=0.2)
     P.xlabel('Fiber Number')
     P.ylabel('Flux row')
     P.title(filename)

@@ -30,30 +30,17 @@ image = pyfits.getdata(opts.input, 0)
 ivar = pyfits.getdata(opts.input, 1)
 
 #- Run extraction
-from bbspec.spec2d.extract import SimpleExtractor
-ex = SimpleExtractor(image, ivar, psf)
+from bbspec.spec2d.extract import SubExtractor
+ex = SubExtractor(image, ivar, psf)
 ex.extract()
+ex.expand_resolution()
         
 #- Output results
 print "Writing output"
-hdus = list()
-hdus.append(pyfits.PrimaryHDU(data = ex.spectra))
-hdus.append(pyfits.ImageHDU(data = ex.ivar))
-hdus.append(pyfits.ImageHDU(data = ex.resolution))
-hdus.append(pyfits.ImageHDU(data = ex.deconvolved_spectra))
-hdus.append(pyfits.ImageHDU(data = ex.dspec_icov))
-
-hdus = pyfits.HDUList(hdus)
-hdus[0].header.add_comment('Extracted re-convolved spectra')
-hdus[0].header.add_comment('Input image: %s' % opts.input)
-hdus[0].header.add_comment('Input PSF: %s' % opts.psf)
-
-hdus[1].header.add_comment('Inverse variance of extracted re-convolved spectra')
-hdus[2].header.add_comment('Convolution kernel R')
-hdus[3].header.add_comment('Original extracted spectra')
-hdus[4].header.add_comment('Inverse covariance of original extracted spectra')
-
-hdus.writeto(opts.output, clobber=True)
+comments = list()
+comments.append('Input image: %s' % opts.input)
+comments.append('Input PSF: %s' % opts.psf)
+ex.writeto(opts.output, comments=comments)
 
 dt = time() - t0
 print '  --> %.1f sec' % dt

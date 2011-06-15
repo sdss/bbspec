@@ -14,6 +14,7 @@ import scipy.sparse
 from scipy.sparse import spdiags
 
 from bbspec.spec2d import resolution_from_icov
+from bbspec.spec2d import ResolutionMatrix
 
 class Extractor(object):
     """Base class for extraction objects to define interface"""
@@ -33,6 +34,10 @@ class Extractor(object):
         self._deconvolved_spectra = N.zeros( (psf.nspec, psf.nflux) )
         self._model = N.zeros(image.shape)
         self._bkg_model = N.zeros(image.shape)
+        
+        #- These are big and may not be filled in for certain tests
+        self._resolution = None
+        self._dspec_icov = None
                 
     def extract(self):
         """
@@ -44,29 +49,24 @@ class Extractor(object):
         """
         raise NotImplementedError
 
-    def writeto(self, filename):
+    def writeto(self, filename, comments=None):
         """
         Write the results of this extraction to filename
         """
         print "Writing output to", filename
         hdus = list()
-        hdus.append(pyfits.PrimaryHDU(data = self.spectra))       #- 0
-        hdus.append(pyfits.ImageHDU(data = self.ivar))            #- 1
-
-        # hdus.append(pyfits.ImageHDU(data = self.resolution))    #- 2
-        hdus.append(pyfits.ImageHDU(data = None))
-
-        hdus.append(pyfits.ImageHDU(data = self.deconvolved_spectra)) #- 3
-
-        # hdus.append(pyfits.ImageHDU(data = self.dspec_icov))    #- 4
-        hdus.append(pyfits.ImageHDU(data = None))
-
-        hdus.append(pyfits.ImageHDU(data = self.model))           #- 5
+        hdus.append(pyfits.PrimaryHDU(data = self.spectra))             #- 0
+        hdus.append(pyfits.ImageHDU(data = self.ivar))                  #- 1
+        hdus.append(pyfits.ImageHDU(data = self.resolution))            #- 2
+        hdus.append(pyfits.ImageHDU(data = self.deconvolved_spectra))   #- 3
+        hdus.append(pyfits.ImageHDU(data = self.dspec_icov))            #- 4
+        hdus.append(pyfits.ImageHDU(data = self.model))                 #- 5
 
         hdus = pyfits.HDUList(hdus)
         hdus[0].header.add_comment('Extracted re-convolved spectra')
-        # hdus[0].header.add_comment('Input image: %s' % opts.image)
-        # hdus[0].header.add_comment('Input PSF: %s' % opts.psf)
+        if comments is not None:
+            for comment in comments:
+                hdus[0].header.add_comment(comment)
 
         hdus[1].header.add_comment('Inverse variance of extracted re-convolved spectra')
         hdus[2].header.add_comment('Convolution kernel R')
@@ -137,35 +137,10 @@ class Extractor(object):
         """
         return self._bkg_model
 
-#-------------------------------------------------------------------------
-
-_t0 = None
-def _timeit(comment=None):
-    
-    ### return ###
-    
-    global _t0
-    if _t0 is None:
-        if comment is not None:
-            print comment
-            pass
-        _t0 = time()
-    else:
-        t1 = time()
-        if comment is not None:
-            print '%-25s : %.1f' % (comment, t1-_t0)
-            pass
-        _t0 = t1
-
-def _sparsify(A):
-    yy, xx = N.where(A != 0.0)
-    vv = A[yy, xx]
-    Ax = scipy.sparse.coo_matrix((vv, (yy, xx)), shape=A.shape)
-    return Ax
-
-
-class SimpleExtractor(Extractor):
-    """Simple brute-force non-optimized extraction algorithm"""
+class SubExtractor(Extractor):
+    """
+    Extractor which supports parallel extraction of sub-regions
+    """
     def __init__(self, image, image_ivar, psf):
         """
         Create extraction object from input image, inverse variance ivar,
@@ -173,242 +148,227 @@ class SimpleExtractor(Extractor):
         extraction.
         """ 
         #- Call Extractor.__init__ to actually do the initialization
-        super(SimpleExtractor, self).__init__(image, image_ivar, psf)
+        Extractor.__init__(self, image, image_ivar, psf)
         
-    def _add_legendre(self, A, nx, ny, maxorder=5):
-        """
-        extend projection matrix A with terms for scattered light
-        
-        returns Ax[npix, nflux+maxorder+1]
-        """
-        #- Try legendre polynomials in x-direction only
-        x = N.tile(N.linspace(-1, 1, nx), ny)
-        
-        B = N.zeros( (ny*nx, maxorder+1) )
-        for i in range(maxorder+1):
-            B[:, i] = scipy.special.legendre(i)(x)
-            
-        Ax = scipy.sparse.hstack( (A, B) )
-        return Ax
+        #- setup resolution matrix
+        self.R = list()
+        for ispec in range(psf.nspec):
+            # self.R.append(ResolutionMatrix(psf.nflux))
+            self.R.append(ResolutionMatrix( (psf.nflux, psf.nflux) ))
 
-    def extract_subregion(self, speclo, spechi, fluxlo, fluxhi, bkgorder=None,
-        results_queue=None):
+    def extract(self, speclo=None, spechi=None, fluxlo=None, fluxhi=None, fluxstep=None):
         """
-        Extract just a subset of the spectra instead of all of them
+        Extract spectra within specified ranges
         """
-
-        #- Find which pixels are covered by these spectra
+        #- Default ranges
         psf = self._psf
-        xlo = max(0, int(psf.param['X'][speclo, fluxlo:fluxhi].min()))
-        xhi = min(psf.npix_x, int(psf.param['X'][spechi-1, fluxlo:fluxhi].max()))
-        ylo = max(0, int(psf.param['Y'][speclo:spechi, fluxlo].min()))
-        yhi = min(psf.npix_y, int(psf.param['Y'][speclo:spechi, fluxhi-1].max()))
-        
-        #- Experimental: Add some boundary in x and y
-        dx, dy = 8, 5
-        
-        xlo = max(0, xlo-dx)
-        xhi = min(xhi+dx, psf.npix_x)
-        
-        ylo = max(0, ylo-dy)
-        yhi = min(yhi+dy, psf.npix_y)
-        
-        nx = xhi - xlo
-        ny = yhi - ylo
-
-        #- Check boundaries
-        if ny < 2*dy:
-            print "ERROR: extracting too narrow of a sub-region near a boundary"
-            dy = 0  #- don't trim edges of returned pixels
-
-        #- Extract a larger range in wavelength, then trim down later
-        dflo = min(fluxlo, 10)
-        dfhi = min(psf.nflux-fluxhi, 10)
-        
+        if speclo is None: speclo = 0
+        if spechi is None: spechi = psf.nspec
+        if fluxlo is None: fluxlo = 0
+        if fluxhi is None: fluxhi = psf.nflux
+        if fluxstep is None: fluxstep = 100
         nspec = spechi - speclo
-        nflux = fluxhi - fluxlo
+        
+        #- Sanity check on boundaries
+        fluxlo = max(fluxlo, 0)
+        fluxhi = min(fluxhi, psf.nflux)
+        
+        #- Walk through subregions to extract
+        _checkpoint()
+        for iflux in range(fluxlo, fluxhi, fluxstep):
+            #- Define flux range for this cutout
+            flo = iflux
+            fhi = min(flo+fluxstep, fluxhi)
+            
+            #- Find which pixels are covered by these spectra
+            xlo = int(psf.param['X'][speclo, flo:fhi].min())
+            xhi = int(psf.param['X'][spechi-1, flo:fhi].max())
+            ylo = int(psf.param['Y'][speclo:spechi, flo].min())
+            yhi = int(psf.param['Y'][speclo:spechi, fhi-1].max())+1
+        
+            #- Add pixel boundaries to fully cover spectra of interest
+            dx = 8
+            xlo = max(xlo-dx, 0)
+            xhi = min(xhi+dx, psf.npix_x)
+
+            #- For y pixel extension, watch out for edges
+            dy = 5
+            dylo = min(dy, ylo)
+            dyhi = min(dy, psf.npix_y-yhi)
+
+            #- Add extra flux bins to avoid edge effects,
+            #- but don't exceed boundaries of the problems
+            dflo = min(2*dy, flo)
+            dfhi = min(2*dy, psf.nflux-fhi)
+            nflux = (fhi+dfhi) - (flo-dflo)
+                        
+            # print 'spec %d-%d flux %d-%d' % (speclo, spechi, flo, fhi)
+            print 'spec %d-%d  flux %3d-%3d  flux+ %3d-%3d' % \
+                (speclo, spechi, flo, fhi, flo-dflo, fhi+dfhi),
+            print ' x %3d-%3d  y %3d-%3d ' % (xlo, xhi, ylo-dylo, yhi+dyhi)
+
+            #--- DEBUG ---
+            # import pdb; pdb.set_trace()
+            #--- DEBUG ---
+
+            #- Get sparse projection matrix A
+            A = psf.getSparseAsub(speclo, spechi, flo-dflo, fhi+dfhi,
+                xlo, xhi, ylo-dylo, yhi+dyhi)
+
+            Anx = xhi-xlo
+            Any = (yhi+dyhi) - (ylo-dylo)
+
+            #- Get image and ivar cutouts
+            pix = self._image[ylo-dylo:yhi+dyhi, xlo:xhi]
+            ivar = self._image_ivar[ylo-dylo:yhi+dyhi, xlo:xhi]
+        
+            #- Solve it!
+            results = _solve(A, pix, ivar, nfluxbins=nflux)
+
+            #- Reshape
+            results['spectra'] = results['spectra'].reshape( (nspec, nflux) )
+            results['ivar'] = results['ivar'].reshape( results['spectra'].shape )
+            results['deconvolved_spectra'] = results['deconvolved_spectra'].reshape( results['spectra'].shape )
+            
+            #- Put the results into the bigger picture
+            self._model[ylo:yhi, xlo:xhi] = results['model'][dylo:dylo+(yhi-ylo), :]
+            self._spectra[speclo:spechi, flo:fhi] = results['spectra'][:, dflo:dflo+(fhi-flo)]
+            self._deconvolved_spectra[speclo:spechi, flo:fhi] = results['deconvolved_spectra'][:, dflo:dflo+(fhi-flo)]
+            self._ivar[speclo:spechi, flo:fhi] = results['ivar'][:, dflo:dflo+(fhi-flo)]
+
+            #--- DEBUG ---
+            # import pylab as P
+            # xspec = results['deconvolved_spectra']
+            # x0 = N.zeros(xspec.shape)
+            # x0[:, dflo:dflo+(fhi-flo)] = xspec[:, dflo:dflo+(fhi-flo)]
+            # model = A.dot(xspec.ravel()).reshape( (Any, Anx) )
+            # m0 = A.dot(x0.ravel()).reshape( (Any, Anx) )
+            # import pdb; pdb.set_trace()
+            #--- DEBUG ---
+
+            #- Get resolution matrix R cutouts
+            R = results['resolution']            
+            for ispec in range(nspec):
+                #- Slice out a piece of R for this spectrum, avoiding edges
+                ii = slice(ispec*nflux+dflo/2, (ispec+1)*nflux-dfhi/2)
+                Rx = R[ii, ii]
+                jj = slice(flo-dflo/2, flo-dflo/2+Rx.shape[0])
+                self.R[ispec][jj, jj] = R[ii, ii]
+            
+    def expand_resolution(self):
+        bandwidth = 15
+        nspec = self._psf.nspec
+        nflux = self._psf.nflux
+        self._resolution = N.zeros( (nspec, bandwidth, nflux), dtype=N.float32 )
+        for ispec in range(nspec):
+            if self.R[ispec].nnz > 0:
+                self._resolution[ispec] = self.R[ispec].diagonals(bandwidth)
+                                                    
+#-------------------------------------------------------------------------
+#- matrix solver
+
+def _solve(A, pix, ivar, nfluxbins, regularize=1e-6):
+    """
+    Solve pix[npix] = A[npix, nflux] * f[nflux] + noise[npix]
+    
+    A[npix, nflux] : projection matrix (possibly sparse)
+    ivar[npix]     : 1.0 / noise^2
+    
+    Results results dictionary with spectra, deconvolved_spectra, ...
+    """
+    
+    #- Save input array shapes
+    npix, nflux = A.shape
+    ny, nx = pix.shape
+    
+    #- Flatten arrays
+    pix = pix.ravel()
+    ivar = ivar.ravel()
+
+    #- Weight by inverse noise
+    Ni = scipy.sparse.spdiags(ivar, [0,], npix, npix)
+    NiA = Ni.dot(A)
+    wpix = pix * ivar
+
+    #- Add regularization term to avoid singularity and excessive ringing
+    if regularize > 0:
+        I = regularize * scipy.sparse.identity(nflux)
+        
+        #--- TEST ---
+        # r = N.array(A.sum(axis=0))[0]
+        # minr = r.max() * regularize
+        # rx = (minr-r).clip(0.0) + 1e-6
+        # I = scipy.sparse.dia_matrix( ((rx,), (0,)), shape=(nflux,nflux) )
                 
-        #- Get sparse projection matrix A
-        A = psf.getSparseAsub(speclo, spechi, fluxlo-dflo, fluxhi+dfhi, \
-                              xlo, xhi, ylo, yhi)
-        image = self._image[ylo:yhi, xlo:xhi]
-        ivar = self._image_ivar[ylo:yhi, xlo:xhi]
-
-        #- TEST : add background legendre polynomial
-        if bkgorder >= 0:
-            A = self._add_legendre(A, nx, ny, maxorder=bkgorder)
-
-        #- Noise weight A and pixels
-        #- Ni = (N)^-1
-        Ni = spdiags(ivar.ravel(), [0,], A.shape[0], A.shape[0])
-        NiA = Ni.dot(A)
-        p = (image*ivar).ravel()
-        
-        #- Spectra extend beyond pixels, so add a normalization term to
-        #- avoid singularity: unconstrained spectra should -> 0
-        npix, nfluxbins = A.shape
-        I = 1e-6 * scipy.sparse.identity(nfluxbins)
-        
         NiAx = scipy.sparse.vstack((NiA, I))
         Ax = scipy.sparse.vstack((A, I))
-        p = N.concatenate( (p, N.zeros(nfluxbins)) )
-        
-        ATA = Ax.T.dot( NiAx )
-        ATA = N.array(ATA.todense())
-        try:
-            ATAinv = N.linalg.inv(ATA)
-        except N.linalg.LinAlgError, e:
-            print >> sys.stderr, e
-            print >> sys.stderr, "ERROR: Can't invert matrix"
-            return
-            
-        xspec0 = N.array( ATAinv.dot( Ax.T.dot(p) ) )
+        wpix = N.concatenate( (wpix, N.zeros(nflux)) )
+    else:
+        NiAx = NiA
+        Ax = A
 
-        #- Project just the bkg model part
-        if bkgorder > 0:
-            bkg = N.zeros(xspec0.size)
-            bkg[-bkgorder-1:] = xspec0.ravel()[-bkgorder-1:]
-            bkg_model = A.dot(bkg).reshape(ny, nx)
-            self._bkg_model[ylo:yhi, xlo:xhi] = bkg_model
-                    
-        xspec0 = xspec0.reshape( (nspec, nflux+dflo+dfhi) )
-        
-        #- Reconvolve flux by resolution
-        R = resolution_from_icov(ATA)
-        xspec1 = N.dot(R, xspec0.ravel()).reshape(xspec0.shape)
+    #--- DEBUG ---
+    ### import pdb; pdb.set_trace()
+    #--- DEBUG ---
 
-        #- Variance of extracted reconvolved spectrum
-        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schlegel 2010 Eqn 15
-        xspec_var = N.array([Cx[i,i] for i in range(Cx.shape[0])])
-        xspec_ivar = (1.0/xspec_var).reshape(xspec1.shape)
+    #- Invert ATA = (A.T N^-1 A)
+    ATA = Ax.T.dot(NiAx).toarray()
+    try:
+        ATAinv = N.linalg.inv(ATA)
+    except N.linalg.LinAlgError, e:
+        print >> sys.stderr, e
+        print >> sys.stderr, "ERROR: Can't invert matrix"
         
-        #- Project model, including bkg terms
-        model = A.dot(xspec0.ravel()).reshape(ny, nx)
+        results = dict()
+        results['spectra'] = N.zeros(nflux)
+        results['deconvolved_spectra'] = N.zeros(nflux)
+        results['ivar'] = N.zeros(nflux)
+        results['resolution'] = N.zeros( (nflux, nflux) )
+        results['model'] = N.zeros( (ny, nx) )
+        return results
         
-        #- Rename working variables for output
-        ### self._spectra[speclo:spechi, fluxlo:fluxhi] = xspec1[:, dflo:dflo+nflux]
-        ### self._ivar[speclo:spechi, fluxlo:fluxhi] = xspec_ivar[:, dflo:dflo+nflux]
-        ### self._deconvolved_spectra[speclo:spechi, fluxlo:fluxhi] = xspec0[:, dflo:dflo+nflux]
-        ### self._model[ylo:yhi, xlo:xhi] = model
+    #- Find deconvolved spectrum solution
+    deconvolved_flux = ATAinv.dot( Ax.T.dot(wpix) )
+    
+    #- Find resolution matrix R and reconvolved flux
+    R = resolution_from_icov(ATA)
+    flux = R.dot(deconvolved_flux)
+    
+    #- Test: try extracting subregions of R
+    #- Fails : bad edge effects
+    #- (or was that other bugs?  Don't give up on this yet)
+    # R = N.zeros( (nflux, nflux) )
+    # nspec = nflux/nfluxbins
+    # for i in range(0, nflux, nspec):
+    #     ii = slice(i, i+nfluxbins)
+    #     R[ii, ii] = resolution_from_icov(ATA[ii, ii])
+    # flux = R.dot(deconvolved_flux)
 
-        result = dict()
-        result['spectra'] = xspec1[:, dflo:dflo+nflux]
-        result['ivar'] = xspec_ivar[:, dflo:dflo+nflux]
-        result['deconvolved_spectra'] = xspec0[:, dflo:dflo+nflux]
-        if dy > 2:
-            result['image_model'] = model[dy:-dy+1, :]
-        else:
-            dy = 0
-        result['speclo'] = speclo
-        result['spechi'] = spechi
-        result['fluxlo'] = fluxlo
-        result['fluxhi'] = fluxhi
-        result['xlo'] = xlo
-        result['xhi'] = xhi
-        result['ylo'] = ylo+dy
-        result['yhi'] = yhi-dy+1
+    #- Diagonalize inverse covariance matrix to get flux ivar
+    Cx = R.dot( ATAinv.dot(R.T) )    #- Bolton & Schlegel 2010 Eqn 15
+    flux_ivar = 1.0 / Cx.diagonal(0)
         
-        self.update_subregion(result)
-        if results_queue is not None:
-            results_queue.put(result)
+    #- Generate model image (drop regularization terms at end of array)
+    model = A.dot(deconvolved_flux)[0:npix]
+    
+    #- Create dictionary of results
+    results = dict()
+    results['spectra'] = flux
+    results['ivar'] = flux_ivar
+    results['deconvolved_spectra'] = deconvolved_flux
+    results['resolution'] = R
+    results['model'] = model.reshape( (ny, nx) )
         
-        return result
-                                
-        #- What do I fill in for these?
-        # n = psf.nspec * psf.nflux
-        # self._dspec_icov = ATA.reshape( (n, n) )
-        # self._resolution = R
+    return results
 
-    def update_subregion(self, results):
-        """
-        Fill in internal variables for spectra, model, etc. using the
-        results dictionary returned by extract_subregion().  This is
-        used internally by extract_subregion, and can be used externally
-        as a parallel python callback.
-        """
-        
-        xlo, xhi = results['xlo'], results['xhi']
-        ylo, yhi = results['ylo'], results['yhi']
-        speclo, spechi = results['speclo'], results['spechi']
-        fluxlo, fluxhi = results['fluxlo'], results['fluxhi']
-        
-        ### print "updating [%d:%d, %d:%d]" % (ylo, yhi, xlo, xhi)
-        
-        self._model[ylo:yhi, xlo:xhi] = results['image_model']
-        self._spectra[speclo:spechi, fluxlo:fluxhi] = results['spectra']
-        self._deconvolved_spectra[speclo:spechi, fluxlo:fluxhi] = results['deconvolved_spectra']
-        self._ivar[speclo:spechi, fluxlo:fluxhi] = results['ivar']        
+#-------------------------------------------------------------------------
+#- Utility function for timing tests
 
-    def extract(self):
-        """Actually do the extraction"""
-        print "Extracting"
-        
-        if N.all(self._image_ivar == 0.0):
-            print >> sys.stderr, "ERROR: input ivar all 0"
-            return
+_t0 = None
+def _checkpoint(comment=None):
+    global _t0
+    if comment is not None:
+        print '%-25s : %.1f' % (comment, time() - _t0)        
+    _t0 = time()
 
-        #- shortcuts
-        psf = self._psf
-        image = self._image
-        ivar = self._image_ivar.ravel()
-        p = image.ravel() * ivar
-            
-        #- Generate the matrix to solve
-        _timeit()
-        Ax = psf.getSparseA()
-        ### _timeit('Get Sparse A')
-        
-        #- construct sparse diagonal noise matrix
-        ixy = N.arange(len(ivar))
-        npix = psf.npix_x * psf.npix_y
-        Ni = scipy.sparse.coo_matrix( (ivar, (ixy, ixy)), shape=(npix, npix) )
-        
-        NiAx = Ni.dot(Ax)
-        ATAx = Ax.T.dot(NiAx)
-        _timeit('Make ATAx')
-        
-        ATA = N.array(ATAx.todense())
-        try:
-            ATAinv = N.linalg.inv(ATA)   
-        except N.linalg.LinAlgError, e:
-            print >> sys.stderr, e
-            print >> sys.stderr, "ERROR: Can't invert matrix"
-            return
-            
-        _timeit('Invert ATA')
 
-        #- Solve for flux
-        xspec0 = N.array(ATAinv.dot(Ax.T.dot(p)))  #- Sparse        
-        xspec0 = xspec0.reshape( (psf.nspec, psf.nflux) )
-        _timeit('Project pixels to flux')
-                
-        #- Reconvolve flux by resolution
-        #- Pulling out diagonal blocks doesn't seem to work (for numerical reasons?),
-        #- so use full A.T A matrix
-        R = resolution_from_icov(ATA)
-        
-        #--- TEST : Try subblocks of ATA before calculating R ---
-        # B = N.zeros(ATA.shape)
-        # for ispec in range(psf.nspec):
-        #     lo = ispec*psf.nflux
-        #     hi = lo + psf.nflux
-        #     B[lo:hi, lo:hi] = ATA[lo:hi, lo:hi]
-        # R = resolution_from_icov(B)
-        #--- end TEST ---
-                
-        ### _timeit('Find R')
-        xspec1 = N.dot(R, xspec0.ravel()).reshape( (psf.nspec, psf.nflux) )
-        ### _timeit('Reconvolve')
-
-        #- Variance of extracted reconvolved spectrum
-        Cx = N.dot(R, N.dot(ATAinv, R.T))  #- Bolton & Schlegel 2010 Eqn 15
-        xspec_ivar = (1.0/Cx.diagonal()).reshape(xspec1.shape)
-        _timeit('Calculate Variance')
-        
-        #- Rename working variables for output
-        self._spectra = xspec1
-        self._ivar = xspec_ivar
-        self._deconvolved_spectra = xspec0
-        n = psf.nspec * psf.nflux
-        self._dspec_icov = ATA.reshape( (n, n) )
-        self._resolution = R

@@ -10,7 +10,7 @@ import pyfits
 #- Hardcoded constants
 class C:
     nspec  = 10    #- number of spectra
-    nflux  = 50    #- number of flux bins per spectrum
+    nflux  = 100    #- number of flux bins per spectrum
     dx = 6.75        #- spectral spacing on the image
 
 C.npix_y = C.nflux + 5

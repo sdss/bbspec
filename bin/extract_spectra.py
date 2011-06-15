@@ -17,7 +17,7 @@ import numpy as N
 import pyfits
 
 from bbspec.spec2d.psf import load_psf
-from bbspec.spec2d.extract import SimpleExtractor
+from bbspec.spec2d.extract import SubExtractor
 
 parser = optparse.OptionParser(usage = "%prog [options]")
 parser.add_option("-i", "--image",  type="string",  help="input image")
@@ -26,7 +26,9 @@ parser.add_option("-o", "--output", type="string",  help="output extracted spect
 parser.add_option("-b", "--bundle", type="string",  help="comma separated list of bundles, 0-24")
 parser.add_option("-f", "--fluxbins", type="string",  help="fmin,fmax,step : flux bin range and sub-region size")
 parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation with parallel python")
-parser.add_option("-T", "--test", action='store_true',  help="hook to try test code")
+parser.add_option("--fibers_per_bundle", type="int", default=20, help="Number of fibers per bundle, default=%default")
+
+### parser.add_option("-T", "--test",     action='store_true',  help="hook to try test code")
 opts, args = parser.parse_args()
 
 def parse_string_range(s):
@@ -71,17 +73,8 @@ ivar = pyfits.getdata(opts.image, 1)
 opts.bundle = parse_string_range(opts.bundle)  #- "1,3-5" -> [1,3,4,5]
 fmin,fmax,fstep = map(int, opts.fluxbins.split(','))
 
-#- Hard code number of spectra per bundle
-nspec_per_bundle = 20
-
 #- create extraction object
-ex = SimpleExtractor(image, ivar, psf)
-
-#- If we are running in parallel, we have to store the results in a queue
-#- and get them back out to update the extraction object, since the actual
-#- parallel extraction object is a copy, not the same as the original.
-#- This could be refactored to be cleaner for parallel vs. non
-results = Queue()
+ex = SubExtractor(image, ivar, psf)
 
 #- Loop over bundles and fibers
 for b in opts.bundle:
@@ -89,65 +82,15 @@ for b in opts.bundle:
         print "WARNING: You are crazy, there is no bundle %d.  Try 0-24." % b
         continue
 
-    ispecmin = b*nspec_per_bundle
-    ispecmax = ispecmin + nspec_per_bundle
+    ispecmin = b * opts.fibers_per_bundle
+    ispecmax = ispecmin + opts.fibers_per_bundle
     jobs = list()
-    for iflux in range(fmin,fmax,fstep):
-        ifluxlo = max(0, iflux)
-        ifluxhi = min(psf.nflux, iflux+fstep)
-        if ifluxhi - ifluxlo <= 0:
-            continue
+    ex.extract(ispecmin, ispecmax, fmin, fmax, fstep)
             
-        print "Bundle %2d, flux bins %4d - %4d" % (b, ifluxlo, ifluxhi)
-    
-        if not opts.parallel:
-            ex.extract_subregion(ispecmin, ispecmax, ifluxlo, ifluxhi)
-        else:
-            args = (ispecmin, ispecmax, ifluxlo, ifluxhi, None, results)  #- gack
-            p = Process(target=ex.extract_subregion, args=args)
-            p.start()
-            jobs.append(p)
-        
-            #- Stop and wait if we've filled up the number of CPUs
-            if len(jobs) == cpu_count():                    
-                for job in jobs:
-                    ### print 'Getting results from queue...'
-                    ex.update_subregion(results.get())
-                
-                jobs = list()
-            
-    #- Catchup on any leftover jobs
-    if opts.parallel:
-        for job in jobs:
-            ### print 'Getting leftover results from queue...'
-            ex.update_subregion(results.get())
-            
-    
 #- Output results
-print "Writing output to", opts.output
-hdus = list()
-hdus.append(pyfits.PrimaryHDU(data = ex.spectra))       #- 0
-hdus.append(pyfits.ImageHDU(data = ex.ivar))            #- 1
-
-# hdus.append(pyfits.ImageHDU(data = ex.resolution))    #- 2
-hdus.append(pyfits.ImageHDU(data = None))
-
-hdus.append(pyfits.ImageHDU(data = ex.deconvolved_spectra)) #- 3
-
-# hdus.append(pyfits.ImageHDU(data = ex.dspec_icov))    #- 4
-hdus.append(pyfits.ImageHDU(data = None))
-
-hdus.append(pyfits.ImageHDU(data = ex.model))           #- 5
-
-hdus = pyfits.HDUList(hdus)
-hdus[0].header.add_comment('Extracted re-convolved spectra')
-hdus[0].header.add_comment('Input image: %s' % opts.image)
-hdus[0].header.add_comment('Input PSF: %s' % opts.psf)
-
-hdus[1].header.add_comment('Inverse variance of extracted re-convolved spectra')
-hdus[2].header.add_comment('Convolution kernel R')
-hdus[3].header.add_comment('Original extracted spectra')
-hdus[4].header.add_comment('Inverse covariance of original extracted spectra')
-hdus[5].header.add_comment('Reconstructed model image')
-
-hdus.writeto(opts.output, clobber=True)
+print "Writing output"
+ex.expand_resolution()
+comments = list()
+comments.append('Input image: %s' % opts.image)
+comments.append('Input PSF: %s' % opts.psf)
+ex.writeto(opts.output, comments=comments)
