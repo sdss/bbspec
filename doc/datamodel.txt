@@ -103,13 +103,10 @@ gives the pixels, with no extra conversion for ergs, wavelength, etc.
 
 HDU 0 : (nfiber x nflux) : Extracted re-convolved spectra
 HDU 1 : (nfiber x nflux) : Inverse variance of extracted re-convolved spectra
-  --> by construction the covariance should be diagonal, but do we want/need
-      to keep the full covariance for testing?
 HDU 2 : [Optional - data may be blank] Convolution kernel R [Format TBD]
 HDU 3 : (nfiber x nflux) : Original extracted spectra, before re-convolution
-HDU 4 : [Optional - data may be blank]
-        (nfiber*nflux) x (nfiber*nflux) : Inverse covariance matrix of extracted
-        spectra [A.T Ninv A]
+HDU 4 : [Optional - data may be blank]  (nfiber*nflux) x (nfiber*nflux)
+        Inverse covariance matrix of extracted spectra [A.T Ninv A]
 HDU 5 : [Optional - HDU may not exist] Reconstructed model image
 
 

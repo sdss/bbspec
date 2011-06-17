@@ -292,12 +292,15 @@ class SubExtractor(Extractor):
             A = psf.getSparseAsub(
                 B.specmin, B.specmax, B.fluxmin, B.fluxmax,
                 B.xmin, B.xmax, B.ymin, B.ymax )
+            ### _checkpoint('Get A')
         
             #- Solve it!
             results = _solve(A, pix, ivar, boundaries=B)
+            ### _checkpoint('Solve A')
             
             #- Save results
             self.store_results(results=results, boundaries=B)
+            ### _checkpoint('Save results')
                         
     def store_results(self, results, boundaries):
         """
@@ -317,10 +320,28 @@ class SubExtractor(Extractor):
         R = results['resolution']            
         for ispec in range(B.nspec):
             #- Slice out a piece of R for this spectrum, avoiding edges
-            ii = slice(ispec*B.nflux+B.dfluxlo/2, (ispec+1)*B.nflux-B.dfluxhi/2)
+            # ii = slice(ispec*B.nflux+B.dfluxlo/2, (ispec+1)*B.nflux-B.dfluxhi/2)
+            # Rx = R[ii, ii]
+            # jj = slice(B.fluxlo-B.dfluxlo/2, B.fluxlo-B.dfluxlo/2+Rx.shape[0])
+                                    
+            ii = slice(ispec*B.nflux+B.dfluxlo, (ispec+1)*B.nflux-B.dfluxhi)
             Rx = R[ii, ii]
-            jj = slice(B.fluxlo-B.dfluxlo/2, B.fluxlo-B.dfluxlo/2+Rx.shape[0])
+            jj = slice(B.fluxlo, B.fluxlo+Rx.shape[0])
+                        
             self.R[ispec][jj, jj] = R[ii, ii]
+            
+            if B.dfluxhi > 0:
+                jy = slice(B.fluxhi-B.dfluxhi, B.fluxhi)
+                jx = slice(B.fluxhi, B.fluxhi+B.dfluxhi)
+                iy = slice((ispec+1)*B.nflux-2*B.dfluxhi, (ispec+1)*B.nflux-B.dfluxhi)
+                ix = slice((ispec+1)*B.nflux-B.dfluxhi, (ispec+1)*B.nflux)
+                self.R[ispec][jy, jx] = R[iy, ix]
+                self.R[ispec][jx, jy] = R[ix, iy]
+            
+        #--- DEBUG ---
+        # import pylab as P
+        # import pdb; pdb.set_trace()
+        #--- DEBUG ---
                         
     def expand_resolution(self):
         """
@@ -409,6 +430,10 @@ def _solve(A, pix, ivar, boundaries=None, regularize=1e-6):
     #- Fails : bad edge effects
     #- (or was that other bugs?  Don't give up on this yet)
     # R = N.zeros( (nflux, nflux) )
+    # if boundaries is not None:
+    #     nfluxbins = boundaries.nflux
+    # else:
+    #     nfluxbins = nflux
     # nspec = nflux/nfluxbins
     # for i in range(0, nflux, nspec):
     #     ii = slice(i, i+nfluxbins)
