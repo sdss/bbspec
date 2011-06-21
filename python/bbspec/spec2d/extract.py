@@ -16,6 +16,8 @@ from scipy.sparse import spdiags
 from bbspec.spec2d import resolution_from_icov
 from bbspec.spec2d import ResolutionMatrix
 
+from multiprocessing import Process, Queue, cpu_count
+
 class Extractor(object):
     """Base class for extraction objects to define interface"""
     def __init__(self, image, image_ivar, psf):
@@ -239,6 +241,32 @@ class Boundaries(object):
     
 #-------------------------------------------------------------------------
 
+def extract_subregion(boundaries, psf, pix, ivar, result_queue=None):
+    """
+    Extract a subregion and return the results.
+    
+    Implemented as a staticmethod to be lightweight for passing
+    into parallel code without bringing along the entire data from
+    a SubExtractor instance
+    """
+    print boundaries
+    
+    B = boundaries   #- shorthand
+    A = psf.getSparseAsub(
+        B.specmin, B.specmax, B.fluxmin, B.fluxmax,
+        B.xmin, B.xmax, B.ymin, B.ymax )
+    try:
+        results = _solve(A, pix, ivar, boundaries=boundaries)
+        results['boundaries'] = boundaries
+    except N.linalg.LinAlgError:
+        results = None
+        print "ERROR: failed extraction for", B
+        
+    if result_queue is not None:
+        result_queue.put(results)
+        
+    return results
+
 class SubExtractor(Extractor):
     """
     Extractor which pieces together extracted sub-regions
@@ -258,10 +286,15 @@ class SubExtractor(Extractor):
             # self.R.append(ResolutionMatrix(psf.nflux))
             self.R.append(ResolutionMatrix( (psf.nflux, psf.nflux) ))
 
-    def extract(self, specmin=None, specmax=None, fluxmin=None, fluxmax=None, fluxstep=None):
+    def extract(self, specmin=None, specmax=None, fluxmin=None, fluxmax=None, fluxstep=None, parallel=False):
         """
         Extract spectra within specified ranges
+        
+        NOTE: The parallelization is becoming fragile to maintain.
+              Need to refactor.
         """
+        _checkpoint()  #- timing tests
+        
         #- Default ranges
         psf = self._psf
         if specmin is None: specmin = 0
@@ -274,34 +307,127 @@ class SubExtractor(Extractor):
         fluxmin = max(fluxmin, 0)
         fluxmax = min(fluxmax, psf.nflux)
         
-        #- Walk through subregions to extract
-        _checkpoint()
+        #- Setup list of input parameters for each subregion
+        print "Setting up input parameters"
+        inputs = list()
         for fluxlo in range(fluxmin, fluxmax, fluxstep):
             
             #- Get bounaries of this sub-region
             fluxhi = min(fluxlo+fluxstep, fluxmax)
             if fluxlo > fluxhi: break
             B = Boundaries(psf, specmin, specmax, fluxlo, fluxhi)
-            print B
                                     
             #- Get image and ivar cutouts
             pix  = self._image[B.ymin:B.ymax, B.xmin:B.xmax]
             ivar = self._image_ivar[B.ymin:B.ymax, B.xmin:B.xmax]
 
-            #- Get sparse projection matrix A
-            A = psf.getSparseAsub(
-                B.specmin, B.specmax, B.fluxmin, B.fluxmax,
-                B.xmin, B.xmax, B.ymin, B.ymax )
-            ### _checkpoint('Get A')
-        
-            #- Solve it!
-            results = _solve(A, pix, ivar, boundaries=B)
-            ### _checkpoint('Solve A')
+            inputs.append([B, psf, pix, ivar])
+
+        #- Extract inputs one-by-one
+        if not parallel:
+            for boundaries, psf, pix, ivar in inputs:
+                results = self.extract_subregion(boundaries, psf, pix, ivar)
+                self.store_results(results=results, boundaries=boundaries)
+        else:
+            #- Submit jobs
+            import pp
+            job_server = pp.Server()
+            jobs = list()
+            modules = ('numpy as N', 'from bbspec.spec2d.extract import _solve', 'from bbspec.spec2d.extract import extract_subregion')
+            for args in inputs:
+                args = tuple(args)  #- must be tuple, not list
+                jobs.append( job_server.submit(extract_subregion, args, modules=modules) )
             
-            #- Save results
-            self.store_results(results=results, boundaries=B)
-            ### _checkpoint('Save results')
-                        
+            #- Combine results
+            job_server.wait()
+            for ijob, job in enumerate(jobs):
+                results = job()
+                if results is not None:
+                    boundaries = results['boundaries']
+                    self.store_results(results=results, boundaries=boundaries)
+                else:
+                    print "Job %d failed" % ijob
+                    
+            ### job_server.print_stats()
+            
+            # #- Parallel extraction with limit on simultaneous jobs
+            # ncpus = cpu_count()
+            # print "Starting parallel extraction with %d cores" % ncpus
+            # results_queue = Queue()
+            # jobs = list()
+            # njobs = 0
+            # #- Start the first batch of jobs
+            # for i in range(ncpus):
+            #     if len(inputs) > 0:
+            #         args = inputs.pop(0)
+            #         args.append(results_queue)
+            #         job = Process(target=self.extract_subregion, args=args)
+            #         jobs.append(job)
+            #         job.start()
+            #         njobs += 1
+            #     
+            # #- Start getting results, and spawning more jobs
+            # nresults = 0
+            # while True:
+            #     results = results_queue.get()
+            #     #- Check if results were valid
+            #     #- it would be better if results always at least said
+            #     #- who it was in case of failure
+            #     if results is not None:
+            #         boundaries = results['boundaries']
+            #         self.store_results(results=results, boundaries=boundaries)
+            #     nresults += 1
+            #         
+            #     #- Gack; code repeat to launch more jobs
+            #     if len(inputs) > 0:
+            #         args = inputs.pop(0)
+            #         args.append(results_queue)
+            #         job = Process(target=self.extract_subregion, args=args)
+            #         jobs.append(job)
+            #         job.start()
+            #         njobs += 1
+            #         
+            #     if nresults == njobs:
+            #         break
+            # 
+            # #- Cleanup parallel jobs
+            # for i, job in enumerate(jobs):
+            #     job.join()
+            
+        _checkpoint('Done with extractions')
+
+    ### @staticmethod
+    def test_bbspec(*args):
+        print args
+        return
+
+    ### @staticmethod
+    def extract_subregion(self, boundaries, psf, pix, ivar, result_queue=None):
+        """
+        Extract a subregion and return the results.
+        
+        Implemented as a staticmethod to be lightweight for passing
+        into parallel code without bringing along the entire data from
+        a SubExtractor instance
+        """
+        print boundaries
+        
+        B = boundaries   #- shorthand
+        A = psf.getSparseAsub(
+            B.specmin, B.specmax, B.fluxmin, B.fluxmax,
+            B.xmin, B.xmax, B.ymin, B.ymax )
+        try:
+            results = _solve(A, pix, ivar, boundaries=boundaries)
+            results['boundaries'] = boundaries
+        except N.linalg.LinAlgError:
+            results = None
+            print "ERROR: failed extraction for", B
+            
+        if result_queue is not None:
+            result_queue.put(results)
+            
+        return results
+                
     def store_results(self, results, boundaries):
         """
         Save results from sub-region into full output arrays
@@ -346,7 +472,12 @@ class SubExtractor(Extractor):
     def expand_resolution(self):
         """
         Expand individual sparse resolution matrices into 3D matrix of
-        diagonals for writing to a fits file.  Needs a better name.
+        diagonals for writing to a fits file.
+        
+        NOTES:
+         - Needs a better name
+         - This is a hacky fragile bit of code. Requires user to remember to
+           call this before saving results to fits file.  Bad.
         """
         bandwidth = 15
         nspec = self._psf.nspec
@@ -417,6 +548,8 @@ def _solve(A, pix, ivar, boundaries=None, regularize=1e-6):
         results['ivar'] = N.zeros(nflux)
         results['resolution'] = N.zeros( (nflux, nflux) )
         results['model'] = N.zeros( (ny, nx) )
+        results['boundaries'] = boundaries
+        
         return results
         
     #- Find deconvolved spectrum solution
@@ -454,6 +587,7 @@ def _solve(A, pix, ivar, boundaries=None, regularize=1e-6):
     results['deconvolved_spectra'] = deconvolved_flux
     results['resolution'] = R
     results['model'] = model.reshape( (ny, nx) )
+    results['boundaries'] = boundaries
         
     #- Reshape if boundaries are given
     if boundaries is not None:

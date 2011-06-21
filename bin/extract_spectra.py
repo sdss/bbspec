@@ -25,7 +25,7 @@ parser.add_option("-p", "--psf",    type="string",  help="input psf")
 parser.add_option("-o", "--output", type="string",  help="output extracted spectra")
 parser.add_option("-b", "--bundle", type="string",  help="comma separated list of bundles, 0-24")
 parser.add_option("-f", "--fluxbins", type="string",  help="fmin,fmax,step : flux bin range and sub-region size")
-parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation with parallel python")
+parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation")
 parser.add_option("--fibers_per_bundle", type="int", default=20, help="Number of fibers per bundle, default=%default")
 
 ### parser.add_option("-T", "--test",     action='store_true',  help="hook to try test code")
@@ -85,7 +85,7 @@ for b in opts.bundle:
     ispecmin = b * opts.fibers_per_bundle
     ispecmax = ispecmin + opts.fibers_per_bundle
     jobs = list()
-    ex.extract(ispecmin, ispecmax, fmin, fmax, fstep)
+    ex.extract(ispecmin, ispecmax, fmin, fmax, fstep, parallel=opts.parallel)
             
 #- Output results
 print "Writing output"
