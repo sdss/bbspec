@@ -1,5 +1,5 @@
 == 2D PSF Extraction Data Model ==
-2011-05-18
+2011-06-22
 
 This documents the initial data model for the 2D spectral extraction R&D.
 It will evolve, and it will be refactored for any external release of
@@ -15,11 +15,13 @@ of code [to be written] will expand this compact PSF format into the full
 PSF format, including interpolation in wavelength, outlier rejection, and
 any tweaking of the X Y positions necessary to match the science frames.
 
+--> This format is somewhat vestigial, but we may want to keep it as
+    a placeholder of the idea of writing out the PSF as measured on the
+    arc lines, to separate the problem of PSF measurement from noisy
+    parameter interpolation across the image.
+
 
 == Full PSF format: spBasisPSF-[br][12]-[FRAME].fits ==
-
-Each HDU contains an image (nfibers x nflux) for a given PSF parameter
-evaluated for each fiber at each flux resolution bin.
 
 HDU 0 keywords:
 
@@ -49,27 +51,72 @@ HDU 0 : PSFPARAM = 'X'
 HDU 1 : PSFPARAM = 'Y'
 HDU 2 : PSFPARAM = 'LogLam'
 
+The data for each of these is an (nfibers x nflux) array of values.
+
 Note: HDU 1 Y values might correspond to image pixel rows, but they don't have to.
 
 Additional HDUs are specific to the PSFTYPE.
 For a given PSFTYPE, the order of the HDUs will be fixed.
 
-The PSFTYPE='GAUSS2D' format has the additional HDUs:
+=== PSFTYPE GAUSS2D ===
+
+This is a toy rotated gaussian PSF format for testing.
+
 HDU 3 : PSFPARAM = 'Amplitude'  Gaussian amplitude (currently fixed to 1.0)
 HDU 4 : PSFPARAM = 'MajorAxis'  Gaussian sigma for the major axis
 HDU 5 : PSFPARAM = 'MinorAxis'  Gaussian sigma for the minor axis
 HDU 6 : PSFPARAM = 'Angle'  Rotation angle of MajorAxis wrt the x-axis
 
-The PSFTYPE='PCA-PIX' format has the additional HDUs:
-HDU 3 : PSFPARAM = 'const'  Pixelized image of PSF
-Optional additional HDUs contain additional terms to the PSF,
-with PSFPARAM='x' for the term linear in x, PSFPARAM='y' for the term
-linear in y, PSFPARAM='xxy' for the term as a function of x*x*y.
-The PSF image for an object centered at (xcen,ycen) defined by
-the sum over all the images in HDU 3 and beyond as follows:
-   PSF = SUM_i{ SUM_j{ Image_ij * ((xcen-0.5*nx)/nx)^i * ((ycen-0.5*ny)/ny)^j
-Therefore, the image is HDU 3 will always represent the PSF in the center
-of the image.
+Note: "Amplitude" is a bit of a misnomer, it really should be the
+integrated area of the PSF, i.e. the total normalization of the exponent
+is Amplitude/(2*pi*MajorAxis*MinorAxis).
+
+=== PSFTYPE PCA-PIX ===
+
+This format is a PCA-like pixelated model such that
+
+    pix = ConstImage + x*ImageX + y*ImageY + x*y*ImageXY + ...
+
+HDU 3 : table with x and y exponents to use for each image model
+
+    Columns IMODEL, XEXP, YEXP
+    One row per model image
+
+HDU 4 : table with x and y scale factors
+
+    Columns IGROUP, X0, XSCALE, Y0, YSCALE
+    One row per fiber
+    
+    The model images are separately calculated for groups of fibers
+    (could be bundles, but doesn't have to be).  Within each group,
+    the x and y dimensions are rescaled such that
+    
+        x = xscale * (xpix - x0)
+        y = yscale * (ypix - y0)
+
+HDU 5 : 4-D array with the PSF images
+
+    Array[IGROUP, IMODEL, IY, IX]
+    
+e.g. to find the PSF for ifiber iflux:
+
+    xpix = HDU0[ifiber, iflux]
+    ypix = HDU1[ifiber, iflux]
+    x0 = HDU4.X0[ifiber]
+    y0 = HDU4.Y0[ifiber]
+    xscale = HDU4.XSCALE[ifiber]
+    yscale = HDU4.YSCALE[ifiber]    
+    x = xscale*(xpix - x0)
+    y = yscale*(ypix - y0)
+    
+    igroup = HDU4.IGROUP[ifiber]
+    psf = [BlankImage]
+    for imodel in range( len(HDU3) ):
+        xexp = HDU3.XEXP[imodel]
+        yexp = HDU3.YEXP[imodel]
+        psf += x^xexp * y^yexp * HDU5[igroup, imodel]
+    
+=== PSFTYPE GAUSS-HERMITE ===
 
 The PSFTYPE='GAUSS-HERMITE' format has the additional HDUs:
 HDU 3 : PSFPARAM = 'sigma'      Gaussian sigma values of basis
@@ -77,10 +124,15 @@ HDU 4 : PSFPARAM = 'PGH(0,0)'   Pixelated Gauss-Hermite Order: (0,0)
 Additional HDUs contain the additional Gauss-Hermite terms (i,j)
 as defined by the PSFPARAM keyword.
 
+--> The additional HDUs fo this format are polynomial coefficients
+    as a function of wavelength, not the direct PSF parameters
+    themselves.  Details need to be documented.
+
 
 == Image: sdProc-[br][12]-[FRAME].fits ==
 
-The image to be extracted must have dimensions matching the NPIX_X and NPIX_Y keywords of the PSF file.
+The image to be extracted must have dimensions matching the
+NPIX_X and NPIX_Y keywords of the PSF file.
 
 HDU 0 : noisy image pixel data
 HDU 1 : pixel inverse variance
@@ -94,22 +146,34 @@ compared to extracted spectra.
 
 HDU 0 : (nfiber x nflux) flux values
 
-TBD: Units?  For testing, it might be convenient to specify that this is
-in photons (or ADUs?) such that this flux, directly convolved by the PSF,
-gives the pixels, with no extra conversion for ergs, wavelength, etc.
-
 
 == Extracted Spectra ==
 
-HDU 0 : (nfiber x nflux) : Extracted re-convolved spectra
-HDU 1 : (nfiber x nflux) : Inverse variance of extracted re-convolved spectra
-HDU 2 : [Optional - data may be blank] Convolution kernel R [Format TBD]
-HDU 3 : (nfiber x nflux) : Original extracted spectra, before re-convolution
-HDU 4 : [Optional - data may be blank]  (nfiber*nflux) x (nfiber*nflux)
-        Inverse covariance matrix of extracted spectra [A.T Ninv A]
-HDU 5 : [Optional - HDU may not exist] Reconstructed model image
+HDU 0 : Extracted re-convolved spectra [nfiber, nflux]
+HDU 1 : Inverse variance of extracted re-convolved spectra [nfiber, nflux]
+HDU 2 : Convolution kernel R [nspec, bandwidth, nflux]
+HDU 3 : Original extracted spectra, before re-convolution [nfiber, nflux]
+HDU 4 : Inverse covariance matrix of extracted spectra (A.T Ninv A)
+        [Optional - data may be blank - only for small test cases]
+        [nfiber*nflux, nfiber*nflux]
+HDU 5 : Reconstructed model image [npix_y, npix_x]
 
+Notes:
+HDU 2 has the diagonal elements of the convolution kernel R in a format
+which is useful for creating sparse matrices using scipy.sparse.dia_matrix.
+For example, the matrix of diagonals
 
+     1  2  3  4
+    10 20 30 40
+    11 12 13 14
+        
+results in a full matrix
 
+    10  2  0  0
+    11 20  3  0
+     0 12 30  4
+     0  0 13 40 
 
+the HDU 2 format for R does *not* contain any elements for re-convolution
+cross-talk between fibers.
 
