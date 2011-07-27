@@ -1,0 +1,139 @@
+%- Strawman BigBOSS spectrograph requirements based upon
+%- extraction pipeline requirements
+
+\title{BigBOSS Spectrograph Requirements from Extraction Pipeline Requirements}
+\author{Stephen Bailey, Adam Bolton, Ted Kisner, David Schlegel}
+\date{\today}
+
+\documentclass[12pt]{article}
+
+\begin{document}
+\maketitle
+
+This note documents the BigBOSS spectrograph requirements that derive
+from extraction pipeline requirements, which in turn derive from
+science requirements.  The initial version of this note is primarily
+to define what parameters are important and what needs to be quantified
+for the real requirements document.
+
+%- PSF
+\section{PSF}
+
+In the following, the point spread function (PSF) $P$ is the projection
+onto the CCD of a delta function in wavelength for a single fiber.
+It is normalized $\int P(\vec x) d \vec x = 1$
+and it is assumed that $P(\vec x) \ge 0$ for all $\vec x$.
+{\it i.e.,} amplifier cross talk, which can cause an effective negative PSF,
+is handled as a separate requirement (\S \ref{sec:ccd_amp_xtalk})
+which is stringent enough (TBC) to make it not matter for the other metrics.
+
+%- PSF Stability
+\subsection{PSF Stability}
+
+The stability of the PSF from time $t$ to $t^\prime$ may be characterized by:
+\begin{equation}
+    \Delta P(t-t^\prime) =
+        { \int P(\vec x, t) P(\vec x, t^\prime) d \vec x \over
+          \int P(\vec x, t) P(\vec x, t) d \vec x }
+\end{equation}
+$\Delta P = 1$ for a perfectly stable PSF, and is $< 1$ for PSF changes
+which matter to the extraction pipeline.
+
+{\bf Requirement}: The PSF shall be stable to $\Delta P(t-t^\prime) > 0.99$
+for time intervals between calibrations, for all telescope and actuator
+pointings.
+
+Comments:
+\begin{itemize}
+    \item it is possible for the PSF to change in a way which preserves
+        $\Delta P = 1$.  We should think carefully about this case and
+        whether it matters.  e.g. $P = 1, 1, 1$ vs. $P^\prime = 1, 0.9, 1.1$
+    \item Should we also specify an absolute time scale for the stability,
+        e.g. $\Delta P > 0.99$ over the course of a night?
+    \item Since the PSF has both a location and a shape, this requirement is
+        also a requirement on stability of the trace positions and wavelength
+        solutions.  We could separately specify that for convenience, but
+        I don't think that is technically necessary.
+\end{itemize}
+
+
+%- PSF Overlap
+\subsection{PSF Overlap}
+
+The PSF overlap between two fibers $i$ and $j$ at wavelengths
+$\lambda, \lambda^\prime$ may be characterized by:
+\begin{equation}
+    P_\times =
+        { \int P_i(\vec x, \lambda) P_j(\vec x, \lambda^\prime) d \vec x \over
+          \int P_i(\vec x, \lambda) P_i(\vec x, \lambda) d \vec x }
+\end{equation}
+
+{\bf Requirement}: $P_\times < 0.01$ for all fibers $i, j$ and
+wavelengths $\lambda, \lambda^\prime$.
+
+Comments:
+\begin{itemize}
+    \item Is this what we mean by ``less than 1\% PSF overlap?''  Or do
+        the squared PSFs mean that we want $P_\times < 0.01^2$ ?
+    \item It is expected that the dominant overlap would be between
+        adjacent fibers and $\lambda \approx \lambda^\prime$.
+\end{itemize}
+
+%- PSF Size
+\subsection{PSF Size}
+
+The size of the PSF on the CCD can be characterized by the radius of the
+encircled energy, e.g. EE99 = 99\% of the energy is within this radius.
+
+{\bf Requirement}: EE99 $< 20$ pixels.
+
+Comments:
+\begin{itemize}
+    \item Larger PSFs mean less dense projection matrices $A$ and thus
+        more computing time.  {\it i.e.,} even with infinite CCD real estate and no
+        PSF overlap, we would still want a requirement on the PSF size.
+    \item Should we specify E50, E90, E95, E99, and E99.9?
+\end{itemize}
+
+%- Fiber geometry
+\section{Fiber Geometry}
+
+{\bf Requirement}: There shall be gaps between the fibers as projected
+onto the CCD at least every 30 fibers such that the PSFs from fibers
+across the gaps shall have $P_\times < 0.001$.
+
+Comments:
+\begin{itemize}
+    \item There are two parameters to quantify here: the maximum number
+        of fibers in a bundle, and the allowable crosstalk across bundles.
+    \item This enables the extraction problem to be factored into bundles
+        of fibers instead of having to simultaneously solve the entire CCD,
+        significantly reducing the computational costs.
+        $m \times O(n^3)$ vs. $O((m \times n)^3)$
+\end{itemize}
+
+%- CCD Properties
+\section{CCD properties}
+\subsection{Read Noise}
+
+\subsection{Fraction of Bad Pixels / Columns}
+
+\subsection{Dark and Bias Properties}
+Linearity with time, ability of overscan to predict offset level of
+active area, ...
+
+\subsection{Amplifier Cross Talk}
+\label{sec:ccd_amp_xtalk}
+{\bf Requirement}: The cross talk between amplifiers shall be less than 0.1\%.
+
+\section{Also see...}
+
+\begin{itemize}
+    \item BigBOSS pipeline design document \\
+        (email from David Schlegel, July 20, 2011)
+    \item Draft of BigBOSS requirements: \\
+        https://bigboss.lbl.gov/trac/wiki/BBReqs/Telecon-21-7-2011
+\end{itemize}
+
+
+\end{document}

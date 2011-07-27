@@ -6,6 +6,7 @@ bin/merge_psf_bundles.py -text
 bin/resample_psf.py -text
 doc/datamodel.txt -text
 doc/hack.txt -text
+doc/spectrospecs.tex -text
 examples/DemoPGHfulltest.py -text
 examples/PGHfulltest.py -text
 examples/PSF_GaussHermite.fits -text svneol=unset#unset
