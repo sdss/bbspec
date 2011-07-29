@@ -41,7 +41,7 @@ runit "python spec2pix.py -i $SPEC_FILE -p $PSF_FILE -o $IMAGE_FILE --hdu 0 --no
 
 echo "-- Extracting spectra from the image using the PSF"
 ### runit "python pix2spec.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE"
-runit "$BBSPEC_DIR/bin/extract_spectra.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE --fibers_per_bundle 10 -f 0,100,20"
+runit "$BBSPEC_DIR/bin/extract_spectra.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE --fibers_per_bundle 10 -f 0,100,20 -b 0 -P"
 
 echo "-- Generating model image"
 runit "python spec2pix.py -i $XSPEC_FILE -p $PSF_FILE -o $MODEL_IMAGE_FILE --hdu 3"

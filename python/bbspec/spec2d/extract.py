@@ -255,6 +255,9 @@ class SubExtractor(Extractor):
         for ispec in range(psf.nspec):
             self.R.append(ResolutionMatrix( (psf.nflux, psf.nflux) ))
 
+    def extract2(self, specmin=None, specmax=None):
+        pass
+
     def extract(self, specmin=None, specmax=None, fluxmin=None, fluxmax=None, fluxstep=None, parallel=False):
         """
         Extract spectra within specified ranges

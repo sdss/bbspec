@@ -7,6 +7,7 @@ Notes:
  - doesn't support keyword arguments 
 """
 
+import os
 from time import time
 import multiprocessing
 from multiprocessing import Process, Queue, cpu_count
@@ -45,6 +46,7 @@ class MapServer(object):
         #- Get results, submit remaining jobs
         while self.nresults < self.njobs:
             self._get_result()
+            ### os.system("echo Memory: `ps -u sbailey -o rss | awk '{sum+=$1} END {print sum/1024/1024}'`")
             if len(self.args) > self.njobs:
                 self._start_job()
                 

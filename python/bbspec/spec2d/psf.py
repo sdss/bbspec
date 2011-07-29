@@ -66,17 +66,49 @@ class PSFBase(object):
         """
         raise NotImplementedError
     
-    def x(self, ispec, iflux):
-        """returns CCD X centroid of spectrum[ispec, iflux]"""
-        return self.param['X'][ispec, iflux]
+    def x(self, ispec, iflux=None, loglam=None, y=None):
+        """
+        Return CCD X centroid of spectrum[ispec] at iflux, loglam, or y.
+        
+        If only ispec is given, return x for every flux bin of ispec.
+        """
+        x = self.param['X'][ispec]
+        if iflux is not None:
+            return x[iflux]
+        elif loglam is not None:
+            return N.interp(loglam, self.loglam(ispec), x)
+        elif y is not None:
+            return N.interp(y, self.y(ispec), x)
+        else:
+            return x
     
-    def y(self, ispec, iflux):
-        """returns CCD Y centroid of spectrum[ispec, iflux]"""
-        return self.param['Y'][ispec, iflux]
+    def y(self, ispec, iflux=None, loglam=None):
+        """
+        Returns CCD Y centroid of spectrum[ispec] evaluated at iflux or loglam.
+        
+        If only ispec is given, return Y array for every flux bin of ispec.
+        """
+        y = self.param['Y'][ispec]
+        if iflux is not None:
+            return y[iflux]
+        elif loglam is not None:
+            return N.interp(loglam, self.loglam(ispec), y)
+        else:
+            return y
 
-    def loglam(self, ispec, iflux):
-        """returns log10(wavelength) of spectrum[ispec, iflux]"""
-        return self.param['LogLam'][ispec, iflux]
+    def loglam(self, ispec, iflux=None, y=None):
+        """
+        Return log10(wavelength) of spectrum[ispec] evaluated at iflux or y.
+        
+        If only ispec is given, return Y array for every flux bin of ispec.
+        """
+        loglam = self.param['LogLam'][ispec]
+        if iflux is not None:
+            return loglam[iflux]
+        elif y is not None:
+            return N.interp(y, self.y(ispec), loglam)
+        else:
+            return loglam
 
     def getA(self):
         """
@@ -179,6 +211,30 @@ class PSFBase(object):
                 image[yslice, xslice] += pixels * spectra[ispec, iflux]
                 
         return image
+        
+    def set_xyloglam(self, x, y, loglam):
+        """
+        Set PSF X, Y, and LogLam grids
+        """
+        if x.shape != y.shape or y.shape != loglam.shape:
+            raise ValueError, 'Parameters must have same shape x%s y%s loglam%s' % \
+                (str(x.shape), str(y.shape), str(loglam.shape))
+        
+        if x.shape[0] != self.nspec:
+            raise  ValueError, 'x.shape[0] != nspec=%d' % self.nspec
+        
+        self.param['X'] = x
+        self.param['Y'] = y
+        self.param['LogLam'] = loglam
+        
+    def resample_wavelength(self, wmin, wmax, dloglam):
+        """
+        Resample PSF from wmin to wmax (Angstroms) on a logarithmic scale
+        with dispersion dloglam.
+        """
+        loglam = N.arange(N.log10(wmin), N.log10(wmax)+dloglam/2, dloglam)
+        nflux = len(loglam)
+        x = N.zeros((self.nspec, nflux))
         
         
 def load_psf(filename):
@@ -355,10 +411,13 @@ class PSFGauss2D(PSFBase):
         theta = self.param['Angle'][ispec, iflux]
 
         #- Define sampling grid
-        dxy = int(3*max(sig0, sig1))
+        dxy = int(5*max(sig0, sig1))
+        
+        # dxy = 11  #- DEBUG: match Ted's size
+        
         xmin, xmax = int(x0)-dxy, int(x0)+dxy
         ymin, ymax = int(y0)-dxy, int(y0)+dxy
-        
+            
         #- Clip to stay within image bounds
         xmin = max(0, xmin)
         xmax = min(xmax, self.npix_x-1)
@@ -370,18 +429,41 @@ class PSFGauss2D(PSFBase):
         dy = N.arange(ymin, ymax+1) - y0        
         dxx, dyy = map(N.ravel, N.meshgrid(dx, dy))
 
-        #- Rotate coordinate systems
-        cost = N.cos(theta)
-        sint = N.sin(theta)
-        xx =  dxx*cost + dyy*sint
-        yy = -dxx*sint + dyy*cost
-
-        #- Evaluate 2D gaussian in rotated system
-        #- Fast, incorrect, non-integration for now
+        #- Rotated Gaussian, formulas from
+        #- http://en.wikipedia.org/wiki/Gaussian_function
+        cost2 = N.cos(theta)**2
+        sint2 = N.sin(theta)**2
+        cos2t = N.cos(2*theta)
+        sin2t = N.sin(2*theta)
+        a = cost2/(2*sig0**2) + sint2/(2*sig1**2)
+        b = sin2t/(4*sig0**2) - sin2t/(4*sig1**2)
+        c = sint2/(2*sig0**2) + cost2/(2*sig1**2)
+        pix = amplitude * N.exp(-(a*dxx**2 + 2*b*dxx*dyy + c*dyy**2))
+        
+        #- Renormalize to make amplitude = area
         norm = 2.5066282746310002  #- N.sqrt(2*N.pi)
-        pix = amplitude * N.exp(-0.5*(xx/sig0)**2) * N.exp(-0.5*(yy/sig1)**2)
-        pix /= sig0*norm
-        pix /= sig1*norm
+        pix /= sig0 * norm
+        pix /= sig1 * norm
+
+        # if ispec == iflux == 0:
+        #     #--- DEBUG ---
+        #     import pdb; pdb.set_trace()
+        #     #--- DEBUG ---
+
+        #- Original Calculation ---
+        # #- Rotate coordinate systems
+        # cost = N.cos(theta)
+        # sint = N.sin(theta)
+        # xx =  dxx*cost + dyy*sint
+        # yy = -dxx*sint + dyy*cost
+        # 
+        # #- Evaluate 2D gaussian in rotated system
+        # #- Fast, incorrect, non-integration for now
+        # norm = 2.5066282746310002  #- N.sqrt(2*N.pi)
+        # pix = amplitude * N.exp(-0.5*(xx/sig0)**2) * N.exp(-0.5*(yy/sig1)**2)
+        # pix /= sig0*norm
+        # pix /= sig1*norm
+        #- End Original Calculation ---
         
         xslice = slice(xmin, xmax+1)
         yslice = slice(ymin, ymax+1)
