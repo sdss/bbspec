@@ -82,18 +82,52 @@ Comments:
 %- PSF Size
 \subsection{PSF Size}
 
-The size of the PSF on the CCD can be characterized by the radius of the
-encircled energy, e.g. EE99 = 99\% of the energy is within this radius.
+The size of the PSF on the CCD can be characterized by the autocorrelation
+of the PSF:
+\begin{equation}
+    R(\Delta x) =
+        \int P(\vec x) P(\vec x + \Delta x) d \vec x
+\end{equation}
+where $\Delta x$ is a shift in pixels, either along or transverse to
+the wavelength dispersion direction.
 
-{\bf Requirement}: EE99 $< 20$ pixels.
+{\bf Requirement TBD}: $R(\Delta x) < \epsilon$
 
+TBD: which $\Delta x$, which $\epsilon$?  Maybe specify several.
+What are the numbers for BOSS PSF?  That's a reasonable starting point.
+
+\subsubsection{EE$xx$}
+
+Alternatively, the size of the PSF on the CCD can also be characterized
+by the radius of the encircled energy, e.g. EE99 = 99\% of the energy is
+within this radius.  The autocorrelation more directly captures the underlying
+issue for the extraction pipeline, but EE$xx$ may be a more practical
+proxy requirement during trade studies.
+
+{\bf Proxy Requirement}:
+\begin{itemize}
+    \item EE99 $< 16$ pixels.
+    \item EE95 $< 4$ pixels.    
+\end{itemize}
 Comments:
 \begin{itemize}
     \item Larger PSFs mean less dense projection matrices $A$ and thus
         more computing time.  {\it i.e.,} even with infinite CCD real estate and no
         PSF overlap, we would still want a requirement on the PSF size.
     \item Should we specify E50, E90, E95, E99, and E99.9?
+    \item This fraction is with respect to the total energy
+        which hits the CCD, not the total energy entering the fibers.  {\it i.e.},
+        if light is scattered by baffled, for the purposes of this spec it counts
+        against the throughput but not the EE$xx$.
 \end{itemize}
+
+\subsection{Scattered Light}
+
+Do we need to separately specify a limit on scattered light, or is that
+captured within the PSF requirements?  Probably good to specify something
+even if we think it is redundant.
+
+{\bf Requirement}: Scattered light $< 2\%$ at all wavelengths
 
 %- Fiber geometry
 \section{Fiber Geometry}
