@@ -145,10 +145,11 @@ class Spectra(object):
         else:
             return self.pix.shape[0]
             
-    def calc_model_image(self, psf):
+    def calc_model_image(self, psf, xyrange=None):
         spec_range = (self.ispecmin, self.ispecmin+self.nspec)
         flux_range = (self.ifluxmin, self.ifluxmin+self.nflux)
-        xyrange = psf.xyrange(spec_range, flux_range)
+        if xyrange is None:
+            xyrange = psf.xyrange(spec_range, flux_range)
         xmin, xmax, ymin, ymax = xyrange
         self.pix = psf.spec2pix(self.flux, xyrange=xyrange, \
                     ispecmin=self.ispecmin, ifluxmin=self.ifluxmin )

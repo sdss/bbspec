@@ -10,7 +10,7 @@ Notes:
 import os
 from time import time
 import multiprocessing
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Process, Queue, cpu_count, Pool
 
 def xmap(fn, args, nprocs=None, verbose=False):
     """

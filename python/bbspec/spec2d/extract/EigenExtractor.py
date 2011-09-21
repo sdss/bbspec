@@ -67,7 +67,7 @@ class EigenExtractor(BaseExtractor):
         fluxstart  : array to constrain initial part of output flux to
                      ensure cascading consistency
         """
-        timeit('start')
+        timeit('quiet_start')
         specmin, specmax = specminmax
         fluxmin, fluxmax = fluxminmax
         fluxlo, fluxhi = fluxlohi
@@ -125,16 +125,19 @@ class EigenExtractor(BaseExtractor):
         spectra = Spectra(flux, ivar, loglam, R=Rx, xflux=xflux,
                           ispecmin=specmin, ifluxmin=fluxlo)
                 
-        timeit('SubExtract %s %s' % (str(specminmax), str(fluxminmax)) )
+        timeit('SubExtract [%d:%d, %d:%d]' % \
+            (specminmax[0], specminmax[1], fluxminmax[0], fluxminmax[1]) )
         return spectra
 
 tx = None
 def timeit(name):
-    return  #- don't print timing info
+    ### return  #- don't print timing info
     global tx
     if name == 'start':
         tx = time()
         print '---'
+    if name == 'quiet_start':
+        tx = time()
     else:
         t = time()
         print '%-20s %.2f' % (name, t-tx)

@@ -9,7 +9,7 @@ Stephen Bailey, Summer 2011
 import os
 import optparse
 import multiprocessing as MP
-from time import time
+from time import time, asctime
 import numpy as N
 import pyfits
 
@@ -46,7 +46,7 @@ def parse_string_range(s):
 #-------------------------------------------------------------------------
 
 #- Load the input data
-print "Loading input image and PSF"
+print "Loading input image and PSF", asctime()
 psf = load_psf(opts.psf)
 image = pyfits.getdata(opts.image, 0)
 ivar = pyfits.getdata(opts.image, 1)
@@ -90,13 +90,12 @@ def extract_bundle(*args):
 extractor = EigenExtractor(image, ivar, psf)
 
 #- Loop over bundles and fibers
-t0 = time()
+print 'Starting extractions', asctime()
 if opts.parallel:
     pool = MP.Pool()
     exopts = list()
     for b in opts.bundle:
         exopts.append((extractor, b, opts))
-    print 'launching extractions', time()-t0
     # for s in pool.map(extract_bundle, exopts, chunksize=1):
     for s in xmap(extract_bundle, exopts, verbose=False):
         pass
@@ -108,21 +107,25 @@ else:
         s = extract_bundle( extractor, b, opts )
 
 #- Merge separate bundles
-print "Merging spectra..."
+print "Merging bundles", asctime()
 spectra = Spectra.blank(nspec, loglam, ispecmin=ispecmin, ifluxmin=fmin)
 for b in opts.bundle:
-    print b
+    ### print b
     bundle_file = '%s_%02d' % (opts.output, b)
     s = Spectra.load(bundle_file)
     os.remove(bundle_file)
     spectra.merge(s)
             
 #- Calculate model image
-spectra.calc_model_image(psf)
+print "Calculating model image", asctime()
+xyrange = (0, image.shape[1], 0, image.shape[0]) #- xmin, xmax, ymin, ymax
+spectra.calc_model_image(psf, xyrange=xyrange)
             
 #- Output results
-print "Writing output"
+print "Writing output", asctime()
 comments = list()
 comments.append('Input image: %s' % opts.image)
 comments.append('Input PSF: %s' % opts.psf)
 spectra.write(opts.output, comments=comments)
+
+print "Done", asctime()
