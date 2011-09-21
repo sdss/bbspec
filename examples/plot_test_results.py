@@ -30,8 +30,8 @@ inspec = inspec.astype(N.float64)
 
 rspec = pyfits.getdata(opts.xspec, 0)   #- re-convolved spectra
 rspec_ivar = pyfits.getdata(opts.xspec, 1)   #- re-convolved spectra inverse variance
-R = pyfits.getdata(opts.xspec, 2)       #- re-convolving kernels
-xspec = pyfits.getdata(opts.xspec, 3)  #- un-convolved spectra
+R = pyfits.getdata(opts.xspec, 3)       #- re-convolving kernels
+xspec = pyfits.getdata(opts.xspec, 4)  #- un-convolved spectra
 
 #- Input spectra, convolved with resolution
 ### cspec = N.dot(R, inspec.ravel()).reshape(inspec.shape)
@@ -47,10 +47,15 @@ for i in range(nspec):
 image = pyfits.getdata(opts.image, 0)
 image_ivar = pyfits.getdata(opts.image, 1)
 psf = load_psf(opts.psf)
-model = pyfits.getdata(opts.model)
 
-#- Alternate model, computed during extractions
-model = pyfits.getdata(opts.xspec, 5)
+if opts.model is not None:
+    model = pyfits.getdata(opts.model)
+else:
+    try:
+        model = pyfits.getdata(opts.xspec, 5)
+    except IndexError:
+        print "WARNING: unable to load model image"
+        model = N.zeros(image.shape)
 
 #- Plots!
 P.figure()

@@ -4,11 +4,11 @@
 #- and exercise various steps of the code
 
 #- Filenames
-PSF_FILE="spBasisPSF-G2D-TEST.fits"
+PSF_FILE="psf-G2D-TEST.fits"
 SPEC_FILE="input_spectra-TEST.fits"
-IMAGE_FILE="sdProc-Gauss2D-TEST.fits"
+IMAGE_FILE="input_image-TEST.fits"
 XSPEC_FILE="extracted_spectra-TEST.fits"
-MODEL_IMAGE_FILE="sdProc-model-TEST.fits"
+MODEL_IMAGE_FILE="extracted_image-TEST.fits"
 
 #- Run a command.  If it fails, print the command and exit.
 function runit
@@ -38,13 +38,13 @@ runit "python make_test_spectra.py -p $PSF_FILE -o $SPEC_FILE"
 
 echo "-- Projecting those spectra into pixels using the PSF"
 runit "python spec2pix.py -i $SPEC_FILE -p $PSF_FILE -o $IMAGE_FILE --hdu 0 --noise"
+### runit "python spec2pix.py -i $SPEC_FILE -p $PSF_FILE -o $IMAGE_FILE --hdu 0"
 
 echo "-- Extracting spectra from the image using the PSF"
-### runit "python pix2spec.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE"
 runit "$BBSPEC_DIR/bin/extract_spectra.py -i $IMAGE_FILE -p $PSF_FILE -o $XSPEC_FILE --fibers_per_bundle 10 -f 0,100,20 -b 0 -P"
 
 echo "-- Generating model image"
-runit "python spec2pix.py -i $XSPEC_FILE -p $PSF_FILE -o $MODEL_IMAGE_FILE --hdu 3"
+runit "python spec2pix.py -i $XSPEC_FILE -p $PSF_FILE -o $MODEL_IMAGE_FILE --hdu 4"
 
 echo "-- Output files:"
 echo "   Gauss2D PSF           : $PSF_FILE"

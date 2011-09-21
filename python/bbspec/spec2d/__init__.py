@@ -5,6 +5,7 @@ from boltonfuncs import pgh
 from airtovac import a2v as airtovac
 from airtovac import v2a as vactoair
 from arcmodel2D import arcmodel2D
-import psf
+### import psf
 
 from resolution import ResolutionMatrix
+from spectra import Spectra

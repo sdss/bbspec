@@ -149,6 +149,22 @@ HDU 0 : (nfiber x nflux) flux values
 
 == Extracted Spectra ==
 
+=== NEW ===
+HDU 0 : Extracted re-convolved spectra flux[nfiber, nflux]
+HDU 1 : Inverse variance of extracted re-convolved spectra ivar[nfiber, nflux]
+HDU 2 : log10(wavelength) of extracted spectra loglam[nfiber, nflux]
+HDU 3 : Resolution matrix R[nspec, bandwidth, nflux]
+
+Optional:
+HDU 4 : Original extracted spectra, before re-convolution xflux[nfiber, nflux]
+HDU 5 : Inverse covariance matrix of original extracted spectra
+        ixcovar[nfiber*nflux, nfiber*nflux]
+        BIG - Usually blank; for testing only
+HDU 6 : Reconstructed model image [npix_y, npix_x]
+        BIG - for testing only
+
+
+=== OLD ===
 HDU 0 : Extracted re-convolved spectra [nfiber, nflux]
 HDU 1 : Inverse variance of extracted re-convolved spectra [nfiber, nflux]
 HDU 2 : Convolution kernel R [nspec, bandwidth, nflux]

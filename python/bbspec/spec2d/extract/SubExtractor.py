@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 """
-Classes for extraction.  When this grows too large, split into
-a separate subdir product/module
+A simple sub-region extractor object.
+
+DEPRECATED
 """
 
 import sys
@@ -15,127 +16,7 @@ from scipy.sparse import spdiags
 
 from bbspec.spec2d import resolution_from_icov
 from bbspec.spec2d import ResolutionMatrix
-
-class Extractor(object):
-    """Base class for extraction objects to define interface"""
-    def __init__(self, image, image_ivar, psf):
-        """
-        Create extraction object from input image, inverse variance ivar,
-        and psf object.  Call extract() method to actually do the
-        extraction.
-        """
-        self._image = image
-        self._image_ivar = image_ivar
-        self._psf = psf
-        
-        #- Create blank arrays to be filled
-        self._spectra = N.zeros( (psf.nspec, psf.nflux) )
-        self._ivar    = N.zeros( (psf.nspec, psf.nflux) )
-        self._deconvolved_spectra = N.zeros( (psf.nspec, psf.nflux) )
-        self._model     = N.zeros(image.shape)
-        self._bkg_model = N.zeros(image.shape)
-        
-        #- These are big and may not be filled in for certain tests
-        self._resolution = None
-        self._dspec_icov = None
-                
-    def extract(self):
-        """
-        Perform the extraction and fill in output arrays.
-        
-        Sub-classes should implement this.
-        """
-        raise NotImplementedError
-
-    def writeto(self, filename, comments=None):
-        """
-        Write the results of this extraction to filename
-        """
-        print "Writing output to", filename
-        hdus = list()
-        hdus.append(pyfits.PrimaryHDU(data = self.spectra))             #- 0
-        hdus.append(pyfits.ImageHDU(data = self.ivar))                  #- 1
-        hdus.append(pyfits.ImageHDU(data = self.resolution))            #- 2
-        hdus.append(pyfits.ImageHDU(data = self.deconvolved_spectra))   #- 3
-        hdus.append(pyfits.ImageHDU(data = self.dspec_icov))            #- 4
-        hdus.append(pyfits.ImageHDU(data = self.model))                 #- 5
-
-        hdus = pyfits.HDUList(hdus)
-        hdus[0].header.add_comment('Extracted re-convolved spectra')
-        if comments is not None:
-            for comment in comments:
-                hdus[0].header.add_comment(comment)
-
-        hdus[1].header.add_comment('Inverse variance of extracted re-convolved spectra')
-        hdus[2].header.add_comment('Convolution kernel R')
-        hdus[3].header.add_comment('Original extracted spectra')
-        hdus[4].header.add_comment('Inverse covariance of original extracted spectra')
-        hdus[5].header.add_comment('Reconstructed model image')
-
-        hdus.writeto(filename, clobber=True)
-
-
-    #- python properties are a way to implement read-only attributes
-    #- for objects.  The following code is a way to put in the base
-    #- class that all Extractors should have X.spectra, etc. without
-    #- actually implementing it.  Subclasses should provide methods
-    #- which actually fill in X._spectra, etc.
-        
-    @property
-    def spectra(self):
-        """
-        Extracted spectra re-reconvolved with resolution matrix
-        spectra[nspec, nflux]
-        """
-        return self._spectra
-        
-    @property
-    def ivar(self):
-        """
-        Inverse variance of extracted reconvolved spectra
-        ivar[nspec, nflux]
-        """
-        return self._ivar
-        
-    @property
-    def resolution(self):
-        """
-        Resolution matrix (R) of extracted spectra
-        resolution[n, n] where n = nspec * nflux
-        """
-        return self._resolution
-        
-    @property
-    def deconvolved_spectra(self):
-        """
-        Deconvolved extracted spectra, before convolving with resolution matrix
-        deconvolved_spectra[nspec, nflux]
-        """
-        return self._deconvolved_spectra
-        
-    @property
-    def dspec_icov(self):
-        """
-        Inverse covariance of deconvolved spectra
-        dspec_icov[n, n] where n = nspec * nflux
-        """
-        return self._dspec_icov
-
-    @property
-    def model(self):
-        """
-        Model image from extracted spectra
-        """
-        return self._model
-
-    @property
-    def bkg_model(self):
-        """
-        Model image from extracted spectra
-        """
-        return self._bkg_model
-
-#-------------------------------------------------------------------------
+from bbspec.spec2d.extract import BaseExtractor
 
 class Boundaries(object):
     """
@@ -237,48 +118,75 @@ class Boundaries(object):
     
 #-------------------------------------------------------------------------
 
-class SubExtractor(Extractor):
+class SubExtractor(BaseExtractor):
     """
     Extractor which pieces together extracted sub-regions
     """
-    def __init__(self, image, image_ivar, psf):
+    def __init__(self, image, image_ivar, psf, wrange=None):
         """
         Create extraction object from input image, inverse variance ivar,
         and psf object.  Call extract() method to actually do the
         extraction.
-        """ 
-        #- Call Extractor.__init__ to actually do the initialization
-        Extractor.__init__(self, image, image_ivar, psf)
         
+        Optional inputs:
+            wrange = [wmin, wmax, wstep] in log(lambda)  (NOT Angstroms!)
+                     defaults to wavelength grid of PSF
+        """
+        self._image = image
+        self._image_ivar = image_ivar
+        self._psf = psf
+
+        #- If wrange is specified, use it for wavelength grid
+        if wrange is not None:
+            wmin, wmax, wstep = wrange
+            w = N.arange(wmin, wmax, wstep)
+            self._loglam = N.tile(w, psf.nspec).reshape(psf.nspec, len(w))
+        else:
+            self._loglam = psf._loglam
+
+        self._nspec = psf._nspec
+        self._nflux = psf._loglam.shape[1]
+        
+        #- Create blank arrays to be filled
+        self._spectra   = N.zeros( (self._nspec, self._nflux) )
+        self._ivar      = N.zeros( (self._nspec, self._nflux) )
+        self._deconvolved_spectra = N.zeros( (self._nspec, self._nflux) )
+        self._model     = N.zeros(image.shape)
+        self._bkg_model = N.zeros(image.shape)
+        
+        #- These are big and may not be filled in for certain tests
+        self._resolution = None
+        self._dspec_icov = None
+                
         #- setup resolution matrix
         self.R = list()
         for ispec in range(psf.nspec):
             self.R.append(ResolutionMatrix( (psf.nflux, psf.nflux) ))
 
-    def extract2(self, specmin=None, specmax=None):
-        pass
-
     def extract(self, specmin=None, specmax=None, fluxmin=None, fluxmax=None, fluxstep=None, parallel=False):
         """
         Extract spectra within specified ranges
+          - specmin/max : indices of spectra (i.e. fibers)
+          - fluxmin/max : indices of log(lambda) range
+                          i.e. NOT wavelengths or loglam -- indices instead
         """
         _checkpoint()  #- timing tests
         
         #- Default ranges
-        psf = self._psf
         if specmin  is None: specmin  = 0
-        if specmax  is None: specmax  = psf.nspec
+        if specmax  is None: specmax  = self._nspec
         if fluxmin  is None: fluxmin  = 0
-        if fluxmax  is None: fluxmax  = psf.nflux
+        if fluxmax  is None: fluxmax  = self._nflux
         if fluxstep is None: fluxstep = 100
         
         #- Sanity check on boundaries
         fluxmin = max(fluxmin, 0)
-        fluxmax = min(fluxmax, psf.nflux)
+        fluxmax = min(fluxmax, self._nflux)
         
         #- Setup list of input parameters for each subregion
         print "Setting up input parameters"
         inputs = list()
+        psf = self._psf
         for fluxlo in range(fluxmin, fluxmax, fluxstep):
             
             #- Get bounaries of this sub-region

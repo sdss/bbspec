@@ -80,7 +80,7 @@ def write_psf(filename):
     for i in range(C.nspec):
         x[i] = C.dx*(i+0.5)
         y[i] = t
-        w[i] = N.logspace(N.log10(3500), N.log10(8500), C.nflux)
+        w[i] = N.linspace(N.log10(3500), N.log10(8500), C.nflux)
    
     #- PSF parameters
     c = N.zeros( (C.nspec, C.nflux) )  #- Amplitude  
@@ -114,7 +114,7 @@ def write_psf(filename):
     
     hdus[0].header.update('PSFPARAM', 'X', 'X position as a function of flux bin')
     hdus[1].header.update('PSFPARAM', 'Y', 'Y position as function of flux bin')
-    hdus[2].header.update('PSFPARAM', 'Wavelength', 'log10(wavelength [Angstroms])')
+    hdus[2].header.update('PSFPARAM', 'LogLam',     'log10(wavelength [Angstroms])')
     hdus[3].header.update('PSFPARAM', 'Amplitude',  'Gaussian amplitude')
     hdus[4].header.update('PSFPARAM', 'MajorAxis',  'Gaussian major axis')
     hdus[5].header.update('PSFPARAM', 'MinorAxis',  'Gaussian minor axis')

@@ -36,6 +36,7 @@ class MapServer(object):
         else:
             self.nprocs = nprocs
 
+        self.t0 = time()
         self.start_jobs()
 
     def start_jobs(self):
@@ -51,8 +52,8 @@ class MapServer(object):
                 self._start_job()
                 
         #- Cleanup jobs
-        # for job in self.jobs:
-        #     job.join()
+        for job in self.jobs:
+            job.join()
 
     def get_results(self, full_output=False):
         """
@@ -78,10 +79,15 @@ class MapServer(object):
         job = Process(target=fn_wrapper, args=xargs)
         
         if self.verbose:
-            print 'Starting job %d' % self.njobs
+            print 'Starting job %d at %f' % (self.njobs, time()-self.t0)
+            
         job.start()
         self.jobs.append(job)
         self.njobs += 1
+        
+        if self.verbose:
+            print 'Returning job %d at %f' % (self.njobs-1, time()-self.t0)
+            
         return job
 
     def _get_result(self):
@@ -89,11 +95,16 @@ class MapServer(object):
         Get a single result from the results_queue and insert it
         into self.results
         """
+        if self.verbose:
+            print 'Trying to get a result at %f' % (time()-self.t0, )
         r = self.results_queue.get()
         ijob = r['ijob']
         if self.verbose:
-            print 'Got result %d' % ijob
+            print 'Got result %d at %f' % (ijob, time()-self.t0)
         self.results[ijob] = r
+        if self.verbose:
+            print "Joining job %d at %f" % (ijob, time()-self.t0)
+            
         self.jobs[ijob].join()  #- join job to finish it off
         self.nresults += 1
         return r
@@ -117,10 +128,16 @@ def fn_wrapper(fn, results_queue, ijob, *args):
     except Exception, e:
         print e
         r = None
-    tx = time() - t0
 
-    results = dict(args=args, results=r, ijob=ijob, time=tx)
+    tx = time() - t0
+    ### results = dict(args=args, results=r, ijob=ijob, time=tx)
+    results = dict(args=None, results=r, ijob=ijob, time=tx)
+    
+    t0 = time()
+    ### print "putting job %d on the queue" % ijob
     results_queue.put(results)
+    ### print "job %d is on the queue at %f" % (ijob, time()-t0)
+    results_queue.close()  #- Is this necessary?
 
 
 if __name__ == '__main__':

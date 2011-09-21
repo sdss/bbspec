@@ -1,3 +1,13 @@
+2011-09-21 : Major refactor
+(Stephen Bailey, LBL)
+Incomplete list of changes:
+  - split spec2d/psf.py into multiple files in spec2d/psf/*.py
+  - split spec2d/extract.py into multiple files in spec2d/extract/*.py
+  - refactored psf and extraction to allow extraction on common loglam grid
+  - DATAMODEL CHANGE: added loglam to spectra output
+  - refactored parallelization
+  - Added Spectra and ResolutionMatrix classes
+
 2011-May-19: Adding some initial bbspec python utilities:
 (A. Bolton, U. of Utah)
   bbspec/spec2d/airtovac:
