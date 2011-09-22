@@ -120,6 +120,7 @@ for b in opts.bundle:
 print "Calculating model image", asctime()
 xyrange = (0, image.shape[1], 0, image.shape[0]) #- xmin, xmax, ymin, ymax
 spectra.calc_model_image(psf, xyrange=xyrange)
+# spectra.pix = psf.spec2pix(spectra.xflux)
             
 #- Output results
 print "Writing output", asctime()

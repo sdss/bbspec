@@ -338,8 +338,8 @@ class PSFBase(object):
             xyrange = self.xyrange(spec_range, flux_range)
             
         xmin, xmax, ymin, ymax = xyrange
-        nx = xmax-xmin+1
-        ny = ymax-ymin+1
+        nx = xmax-xmin
+        ny = ymax-ymin
         
         #- Project spectra into the image
         image = N.zeros( (ny, nx) )

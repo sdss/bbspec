@@ -151,7 +151,7 @@ class Spectra(object):
         if xyrange is None:
             xyrange = psf.xyrange(spec_range, flux_range)
         xmin, xmax, ymin, ymax = xyrange
-        self.pix = psf.spec2pix(self.flux, xyrange=xyrange, \
+        self.pix = psf.spec2pix(self.xflux, xyrange=xyrange, \
                     ispecmin=self.ispecmin, ifluxmin=self.ifluxmin )
         self.xmin = xmin
         self.ymin = ymin

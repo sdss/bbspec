@@ -77,7 +77,7 @@ P.title('Spectra chi')
 # P.xlabel('Spectra (data - fit) / error')
 # print chi.mean(), chi.std()
 ymin, ymax = P.ylim()
-P.text(-4.5, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.text(-4.5, ymax*0.9, "$\sigma=%.2f$" % chi.std())
 P.xlim(-5, 5)
 
 #- Pixel chi
@@ -87,7 +87,7 @@ P.hist(chi, 50, (-5, 5), histtype='stepfilled')
 P.title('Pixel chi')
 # P.xlabel('Image (data - fit) / error')
 ymin, ymax = P.ylim()
-P.text(-4.5, ymax*0.9, "$\sigma=%.1f$" % chi.std())
+P.text(-4.5, ymax*0.9, "$\sigma=%.2f$" % chi.std())
 P.xlim(-5, 5)
 
 #- Lower row of images    

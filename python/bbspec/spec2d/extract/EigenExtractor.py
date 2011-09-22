@@ -80,7 +80,7 @@ class EigenExtractor(BaseExtractor):
         dx = 8
         xmin = max(min(self._psf.x(specmin, loglam=loglam[0]))-dx, 0)
         xmax = min(max(self._psf.x(specmax-1, loglam=loglam[-1]))+dx, self._psf.npix_x)
-        dy = 5
+        dy = 10
         ymin = self._psf.y(loglam=loglam[:, 0])[specmin:specmax].min() - dy
         ymin = max(ymin, 0)
         ymax = self._psf.y(loglam=loglam[:, -1])[specmin:specmax].max() + dy
