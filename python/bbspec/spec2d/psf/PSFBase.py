@@ -119,6 +119,25 @@ class PSFBase(object):
         self.param['_iflux'] = N.tile(self._iflux, self.nspec).reshape(self.nspec, self.nflux)
     
     #-------------------------------------------------------------------------
+    #- Shift PSF to a new x,y,loglam grid
+    def shift_xy(self, x, y, loglam):        
+        """
+        Shift the x,y trace locations of this PSF, preserving the original
+        loglam grid.  Inputs are 2D x, y, loglam grids, e.g. from an
+        spCFrame file.  y is optionally 1D instead of 2D.
+        """
+        if y.ndim == 1:
+            ny = len(y)
+            y = N.tile(y, self.nspec).reshape(self.nspec, ny)
+        assert x.shape == y.shape
+        assert x.shape == loglam.shape
+        
+        for i in range(self.nspec):
+            self.param['X'][i] = N.interp(self.loglam(i), loglam[i], x[i])
+            self.param['Y'][i] = N.interp(self.loglam(i), loglam[i], y[i])
+        
+    
+    #-------------------------------------------------------------------------
     #- Interpolate flux bins
     def _iflux2D(self, iflux=None, loglam=None, y=None):
         """

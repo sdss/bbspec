@@ -24,7 +24,9 @@ parser.add_option("-p", "--psf",    type="string",  help="input psf")
 parser.add_option("-o", "--output", type="string",  help="output extracted spectra")
 parser.add_option("-b", "--bundle", type="string",  help="comma separated list of bundles, 0-24")
 parser.add_option("-f", "--fluxbins", type="string",  help="fmin,fmax,step : flux bin range and sub-region size")
-parser.add_option("-w", "--wavelength", type="string",  help="wmin,wmax,dloglam : wavelength range and resolution")
+parser.add_option("-F", "--framefile", type="string",  help="spCFrame file to use for trace solution")
+parser.add_option("-w", "--wavelength", type="string",  help="wmin,wmax,dw : wavelength range and resolution")
+parser.add_option("-L", "--loglam", type="string",  help="loglam_min,loglam_max,dloglam : log10 wavelength range and resolution")
 parser.add_option("-P", "--parallel", action='store_true',  help="Parallelize calculation")
 parser.add_option("--fibers_per_bundle", type="int", default=20, help="Number of fibers per bundle, default=%default")
 ### parser.add_option("-T", "--test",     action='store_true',  help="hook to try test code")
@@ -51,6 +53,13 @@ psf = load_psf(opts.psf)
 image = pyfits.getdata(opts.image, 0)
 ivar = pyfits.getdata(opts.image, 1)
 
+#- If framefile is given, shift PSF to that grid
+if opts.framefile:
+    frame_x = pyfits.getdata(opts.framefile, 7)
+    frame_y = N.arange(frame_x.shape[1])
+    frame_loglam = pyfits.getdata(opts.framefile, 3)
+    psf.shift_xy(frame_x, frame_y, frame_loglam)
+
 #- Parse bundle / spectra options
 opts.bundle = parse_string_range(opts.bundle)  #- "1,3-5" -> [1,3,4,5]
 bmin, bmax = min(opts.bundle), max(opts.bundle)
@@ -61,10 +70,14 @@ nspec = opts.fibers_per_bundle * (max(opts.bundle) - min(opts.bundle) + 1)
 ispecmin = opts.fibers_per_bundle * min(opts.bundle)
 
 #- Parse wavelength grid
-if opts.wavelength:
-    wmin, wmax, dloglam = map(float, opts.wavelength.split(','))
-    loglam = N.arange(N.log10(wmin), N.log10(wmax), dloglam)
+if opts.loglam:
+    loglam_min, loglam_max, dloglam = map(float, opts.loglam.split(','))
+    loglam = N.arange(loglam_min, loglam_max, dloglam)
     psf.resample(loglam)
+elif opts.wavelength:
+    wmin, wmax, dw = map(float, opts.wavelength.split(','))
+    w = N.arange(wmin, wmax, dw)
+    psf.resample(N.log10(w))
 
 #- Parse flux bin options
 if opts.fluxbins is None:

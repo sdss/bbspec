@@ -126,12 +126,7 @@ class PSFPixelated(PSFBase):
             xx[len(x)/2] = 1.0
             return xx
 
-    def _sincshift(self, image, dx, dy): 
-        
-        #- DEBUG : Turn off shifting
-        return image
-        #- DEBUG : Turn off shifting
-        
+    def _sincshift(self, image, dx, dy):         
         sincrad = 10
         s = N.arange(-sincrad, sincrad+1)
         sincx = self._sincfunc(s, dx)

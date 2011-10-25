@@ -73,23 +73,12 @@ class EigenExtractor(BaseExtractor):
         fluxlo, fluxhi = fluxlohi
 
         #- Wavelength range to solve
-        ### loglam = self._psf.loglam()[specmin:specmax, fluxmin:fluxmax]
         loglam = self._psf.loglam()[specmin:specmax, fluxlo:fluxhi]
         
         #- Find pixel boundaries
-        dx = 8
-        xmin = max(min(self._psf.x(specmin, loglam=loglam[0]))-dx, 0)
-        xmax = min(max(self._psf.x(specmax-1, loglam=loglam[-1]))+dx, self._psf.npix_x)
-        dy = 10
-        ymin = self._psf.y(loglam=loglam[:, 0])[specmin:specmax].min() - dy
-        ymin = max(ymin, 0)
-        ymax = self._psf.y(loglam=loglam[:, -1])[specmin:specmax].max() + dy
-        ymax = min(ymax, self._psf.npix_y)
-        
-        #+ Could round down/up for min/max
-        xypix = map(int, (xmin, xmax, ymin, ymax))
-        
-        ### print specminmax, fluxlohi, fluxminmax, xypix
+        # xypix = self._psf.xyrange(specminmax, fluxminmax, dx=8, dy=5)
+        xypix = self._psf.xyrange(specminmax, fluxlohi, dx=8, dy=5)
+        xmin, xmax, ymin, ymax = xypix
         
         #- Get inputs for solver
         A = self._psf.getAx(specminmax, fluxminmax, pix_range=xypix)
@@ -99,14 +88,14 @@ class EigenExtractor(BaseExtractor):
         
         #- Actually do the extraction
         xflux, flux, ivar, R = _solve(A, pix, pix_ivar, fluxstart=fluxstart)
-        
+
         #- Reshape matrices
         nspec = specmax-specmin
         nflux = fluxmax - fluxmin
         xflux = xflux.reshape(nspec, nflux)
         flux  = flux.reshape(nspec, nflux)
         ivar  = ivar.reshape(nspec, nflux)
-        
+
         #+ convert R into a ResolutionMatrix object
         R[R<1e-9] = 0.0  #- trim really small numbers so they don't enter
         Rx = list()
