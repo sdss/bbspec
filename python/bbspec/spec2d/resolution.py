@@ -8,7 +8,135 @@ import numpy as N
 import scipy.sparse
 from time import time
 
-class ResolutionMatrix(scipy.sparse.lil_matrix):
+class ResolutionMatrix(scipy.sparse.dia_matrix):
+    """
+    Resolution Matrix for a single spectrum.
+    
+    Convert to CSR format before using for math: R = R.tocsr()
+    """
+    
+    def __init__(self, diagonals=None, full_range=None, good_range=None):
+        """
+        Create ResolutionMatrix with diagonals[width, nflux].
+        
+        Optional inputs:
+            full_range : (iflux_min, iflux_max) covered by this data
+            good_range : (iflux_lo, iflux_hi) range to trust
+            --> i.e. data may contain edge effects; good_range should be used
+        """
+
+        #- Initialize sparse matrix
+        width, nflux = diagonals.shape
+        if width%2 == 0:
+            raise ValueError, 'diagonals width must be odd'
+            
+        offsets = range(-(width/2), (width/2)+1)
+        super(ResolutionMatrix, self).__init__((diagonals, offsets), \
+                shape=(nflux, nflux) )
+
+        #- Default ranges start at 0 and cover everything
+        if full_range is None:
+            full_range = (0, nflux)
+        if good_range is None:
+            good_range = full_range
+
+        #- Save ranges
+        self.full_range = full_range
+        self.good_range = good_range
+
+    @property
+    def nflux_full(self):
+        return self.full_range[1] - self.full_range[0]
+
+    @property
+    def nflux_good(self):
+        return self.good_range[1] - self.good_range[0]
+
+    def merge(self, Rx):
+        """
+        Merge this resolution matrix with another.
+        """
+        #- Check ranges
+        if self.full_range[0] > Rx.full_range[0] or \
+            self.full_range[1] < Rx.full_range[1]:
+            print >> sys.stderr, self.full_range, Rx.full_range
+            raise ValueError, 'full_range of new matrix must be a subset of original'
+
+        if self.data.shape[0] != Rx.data.shape[0]:
+            raise ValueError, "matrix bandwidths must agree (%d != %d)" % \
+                (self.data.shape[0], Rx.data.shape[0])
+                
+        start = Rx.full_range[0] - self.full_range[0]
+        nx = Rx.full_range[1] - Rx.full_range[0]
+        self.data[:, start:start+nx] = Rx.data.copy()
+
+    @staticmethod
+    def blank(bandwidth, nflux):
+        d = N.zeros((bandwidth, nflux))
+        return ResolutionMatrix(d)
+  
+    #--- IO methods ---
+    @staticmethod
+    def from_array(a, bandwidth=15, **kwargs):
+        R = scipy.sparse.dia_matrix(a)
+        b = int(bandwidth)/2
+        ii = (-b <= R.offsets) & (R.offsets <= +b)
+        if sum(ii) == bandwidth:
+            diagonals = R.data[ii]
+        else:
+            nflux = R.data.shape[1]
+            diagonals = N.zeros((bandwidth, nflux))
+            diagonals[R.offsets[ii]+b] = R.data[ii]
+            
+        return ResolutionMatrix(diagonals, **kwargs)
+    
+    @staticmethod
+    def from_diagonals(d, **kwargs):
+        """
+        Create a sparse ResolutionMatrix from a block of diagonals.
+        
+        Format is the same as for scipy.sparse.dia_matrix:
+        
+        input diagonals:
+        d = [[1, 2, 3, 4],
+             [2, 4, 6, 8],
+             [9, 8, 7, 6]]
+             
+        become:
+        r = [[2 8 0 0]
+             [1 4 7 0]
+             [0 2 6 6]
+             [0 0 3 8]]
+             
+        if d is 3D, create a list of ResolutionMatrix objects
+        """
+
+        assert(d.ndim == 2 or d.ndim == 3)
+        if d.ndim == 3:
+            nR, bandwidth, nflux = d.shape
+            return [ResolutionMatrix.from_diagonals(d[i], **kwargs) for i in range(nR)]
+        else:
+            return ResolutionMatrix(d, **kwargs)
+        
+    @staticmethod
+    def to_diagonals(R):
+        """
+        returns diagonals within bandwidth from R as dense data array
+
+        R is either a ResolutionMatrix, or an array of them
+        
+        BUGS (features!):
+        - Assumes R is fully dense along main diagonal
+        """
+        if type(R) == list or type(R) == tuple:
+            n = len(R)
+            d = [ResolutionMatrix.to_diagonals(R[i]) for i in range(n)]
+            return N.array(d)
+        else:
+            return R.data
+                          
+
+class ResolutionMatrixLIL(scipy.sparse.lil_matrix):
     """
     Resolution matrix for a single spectrum
     
@@ -28,8 +156,8 @@ class ResolutionMatrix(scipy.sparse.lil_matrix):
             --> i.e. data may contain edge effects; good_range should be used
         """
 
-        #- Initialize spare matrix
-        super(ResolutionMatrix, self).__init__(data)
+        #- Initialize sparse matrix
+        super(ResolutionMatrixLIL, self).__init__(data)
 
         if type(data) == list:
             return
@@ -93,7 +221,7 @@ class ResolutionMatrix(scipy.sparse.lil_matrix):
         #- Much faster to merge via dense arrays (!)
         R = self.toarray()
         R[iirow, iicol] = Rx.toarray()[jjrow, jjcol]
-        R = ResolutionMatrix(R)
+        R = ResolutionMatrixLIL(R)
         self.data = R.data.copy()
         self.rows = R.rows.copy()        
 
@@ -122,12 +250,12 @@ class ResolutionMatrix(scipy.sparse.lil_matrix):
         assert(d.ndim == 2 or d.ndim == 3)
         if d.ndim == 3:
             nR, bandwidth, nflux = d.shape
-            return [ResolutionMatrix.from_diagonals(d[i], **kwargs) for i in range(nR)]
+            return [ResolutionMatrixLIL.from_diagonals(d[i], **kwargs) for i in range(nR)]
         else:
             bandwidth, nflux = d.shape
             offsets = range(-(bandwidth/2), (bandwidth/2)+1)
             R = scipy.sparse.dia_matrix( (d, offsets), shape=(nflux,nflux) )
-            return ResolutionMatrix(R, **kwargs)
+            return ResolutionMatrixLIL(R, **kwargs)
         
     @staticmethod
     def to_diagonals(R, bandwidth=15):
@@ -141,7 +269,7 @@ class ResolutionMatrix(scipy.sparse.lil_matrix):
         """
         if type(R) == list or type(R) == tuple:
             n = len(R)
-            d = [ResolutionMatrix.to_diagonals(R[i], bandwidth=bandwidth) for i in range(n)]
+            d = [ResolutionMatrixLIL.to_diagonals(R[i], bandwidth=bandwidth) for i in range(n)]
             return N.array(d)
         else:
             R = R.todia()

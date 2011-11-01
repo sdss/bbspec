@@ -8,4 +8,5 @@ from arcmodel2D import arcmodel2D
 ### import psf
 
 from resolution import ResolutionMatrix
+from resolution import ResolutionMatrixLIL
 from spectra import Spectra

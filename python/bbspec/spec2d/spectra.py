@@ -85,9 +85,7 @@ class Spectra(object):
         for i in range(spectra.nspec):
             j = (spectra.ispecmin - self.ispecmin) + i
             if self.R[j] is None:
-                full_range = (self.ifluxmin, self.ifluxmin+self.nflux)
-                diag = sparse.eye(self.nflux, self.nflux)
-                self.R[j] = ResolutionMatrix(diag, full_range=full_range)
+                self.R[j] = ResolutionMatrix.blank(bandwidth=15, nflux=self.nflux)
                 
             self.R[j].merge(spectra.R[i])
             
@@ -168,7 +166,7 @@ class Spectra(object):
         bandwidth = 15
         for i, Rx in enumerate(self.R):
             if Rx is not None:
-                R.append(ResolutionMatrix.to_diagonals(Rx, bandwidth=bandwidth))
+                R.append(ResolutionMatrix.to_diagonals(Rx))
             else:
                 R.append(N.zeros((bandwidth, self.nflux)))
         R = N.array(R)
@@ -280,6 +278,9 @@ class Spectra(object):
     def wavelength(self):
         return 10**self.loglam
         
+    @property
+    def w(self):
+        return 10**self.loglam
         
         
         

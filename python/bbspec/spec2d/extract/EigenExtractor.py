@@ -101,7 +101,8 @@ class EigenExtractor(BaseExtractor):
         Rx = list()
         for i in range(nspec):
             ii = slice(i*nflux, (i+1)*nflux)
-            Rx.append(ResolutionMatrix(R[ii, ii], full_range=fluxminmax, good_range=fluxlohi))
+            Rx.append(ResolutionMatrix.from_array(R[ii, ii], \
+                full_range=fluxminmax, good_range=fluxlohi))
         
         #- Get just the subset we trust
         dfluxlo = (fluxlo-fluxmin)
