@@ -17,7 +17,7 @@ from scipy import sparse
 class Spectra(object):
     def __init__(self, flux, ivar, loglam,
                  R=None,
-                 xflux=None, ixcovar=None,
+                 xflux=None, ixcovar=None, fullflux=None,
                  ispecmin=0, ifluxmin=0,
                  pix=None, xmin=0, ymin=0):
         """
@@ -60,6 +60,7 @@ class Spectra(object):
         #- Optional inputs; these could be None
         self.R = R
         self.xflux = xflux
+        self.fullflux = fullflux
         self.ixcovar = ixcovar
         self.pix = pix
         self.xmin = xmin
@@ -144,6 +145,11 @@ class Spectra(object):
             return self.pix.shape[0]
             
     def calc_model_image(self, psf, xyrange=None):
+        """
+        Calculate model image using psf object; fill in self.pix array
+        
+        xyrange = (xmin, xmax, ymin, ymax) in pixels
+        """
         spec_range = (self.ispecmin, self.ispecmin+self.nspec)
         flux_range = (self.ifluxmin, self.ifluxmin+self.nflux)
         if xyrange is None:
@@ -222,9 +228,9 @@ class Spectra(object):
         """
         
         fx = pyfits.open(filename)
-        flux = fx[0].data
-        ivar = fx[1].data
-        loglam = fx[2].data
+        flux = fx[0].data.astype('=f8')  #- convert to native endian
+        ivar = fx[1].data.astype('=f8')
+        loglam = fx[2].data.astype('=f8')
         
         #- spectral/flux ranges
         ispecmin = fx[0].header['ISPECMIN']
@@ -234,13 +240,13 @@ class Spectra(object):
         #- Resolution matrix
         full_range = (ifluxmin, ifluxmin+nflux)
         good_range = (ifluxmin, ifluxmin+nflux)
-        R = fx[3].data
+        R = fx[3].data.astype('=f8')
         if R is not None:
             R = ResolutionMatrix.from_diagonals(R, full_range=full_range, good_range=good_range)
         
         #- Optional, these may be blank
-        xflux = fx[4].data
-        pix = fx[6].data
+        xflux = fx[4].data.astype('=f8')
+        pix = fx[6].data.astype('=f8')
         xmin = fx[6].header['CRVAL1']
         ymin = fx[6].header['CRVAL2']
         
