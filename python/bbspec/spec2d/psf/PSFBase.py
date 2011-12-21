@@ -59,7 +59,12 @@ class PSFBase(object):
 
     def xyrange(self, spec_range, flux_range, dx=8, dy=5):
         """
-        Return recommended range of pixels which cover these spectra/fluxes
+        Return recommended range of pixels which cover these spectra/fluxes:
+        (xmin, xmax, ymin, ymax)
+        
+        spec_range = indices specmin, specmax
+        flux_range = indices fluxmin, fluxmax
+        dx, dy = amount of extra overlap
         """
         specmin, specmax = spec_range
         fluxmin, fluxmax = flux_range
@@ -347,6 +352,12 @@ class PSFBase(object):
     def spec2pix(self, spectra, ispecmin=0, ifluxmin=0, xyrange=None):
         """
         Project spectra through psf to produce image
+        
+        spectra[nspec, nflux] : 2D array of spectra
+        ispecmin, ifluxmin : lower indices of spectra and flux
+        xyrange : pixels (xmin, xmax, ymin, ymax) to consider
+        
+        See also: PSFBase.xyrange(spec_range, flux_range)
         """
 
         nspec, nflux = spectra.shape
