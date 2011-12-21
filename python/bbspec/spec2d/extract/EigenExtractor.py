@@ -104,6 +104,10 @@ class EigenExtractor(BaseExtractor):
             Rx.append(ResolutionMatrix.from_array(R[ii, ii], \
                 full_range=fluxminmax, good_range=fluxlohi))
         
+        #- Hang onto full flux range before trimming
+        # fullflux = flux
+        fullflux = None
+        
         #- Get just the subset we trust
         dfluxlo = (fluxlo-fluxmin)
         nflux = (fluxhi-fluxlo)
@@ -112,8 +116,10 @@ class EigenExtractor(BaseExtractor):
         flux = flux[:, dfluxlo:dfluxlo+nflux]
         ivar = ivar[:, dfluxlo:dfluxlo+nflux]
         
-        spectra = Spectra(flux, ivar, loglam, R=Rx, xflux=xflux,
-                          ispecmin=specmin, ifluxmin=fluxlo)
+        spectra = Spectra(flux, ivar, loglam, R=Rx,
+                            xflux=xflux, fullflux=fullflux,
+                            ispecmin=specmin, ifluxmin=fluxlo)
+                          
                 
         timeit('SubExtract [%d:%d, %d:%d]' % \
             (specminmax[0], specminmax[1], fluxminmax[0], fluxminmax[1]) )
