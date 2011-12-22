@@ -46,7 +46,7 @@ class EigenExtractor(BaseExtractor):
             dlo = psfradius if fluxstart is None else len(fluxstart)
             dhi = psfradius
             
-            fmin = max(0, fluxlo - dlo)
+            fmin = max(fluxmin, fluxlo - dlo)
             fmax = min(fluxhi + dhi, fluxmax)
             
             s = self.subextract(specminmax, fluxminmax = (fmin, fmax),
@@ -121,8 +121,8 @@ class EigenExtractor(BaseExtractor):
                             ispecmin=specmin, ifluxmin=fluxlo)
                           
                 
-        timeit('SubExtract [%d:%d, %d:%d]' % \
-            (specminmax[0], specminmax[1], fluxminmax[0], fluxminmax[1]) )
+        # timeit('SubExtract [%d:%d, %d:%d]' % \
+        #     (specminmax[0], specminmax[1], fluxminmax[0], fluxminmax[1]) )
         return spectra
 
 tx = None

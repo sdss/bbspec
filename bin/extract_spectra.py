@@ -97,6 +97,7 @@ def extract_bundle(*args):
     s = extractor.extract((specmin, specmax), (fmin, fmax), fstep)
     outfile = '%s_%02d' % (opts.output, bundle)
     s.calc_model_image(extractor.psf)
+    ### print "Writing", outfile
     s.write(outfile)
 
 #- create extraction object

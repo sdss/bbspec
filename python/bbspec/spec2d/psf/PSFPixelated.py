@@ -110,6 +110,9 @@ class PSFPixelated(PSFBase):
         
         xslice = slice(xmin, xmax)
         yslice = slice(ymin, ymax)
+
+        #- Normalize
+        psfimage /= psfimage.sum()
         
         if xyrange:
             return xslice, yslice, psfimage

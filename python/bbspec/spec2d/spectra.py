@@ -86,7 +86,9 @@ class Spectra(object):
         for i in range(spectra.nspec):
             j = (spectra.ispecmin - self.ispecmin) + i
             if self.R[j] is None:
-                self.R[j] = ResolutionMatrix.blank(bandwidth=15, nflux=self.nflux)
+                full_range = self.ifluxmin, self.ifluxmin + self.nflux
+                self.R[j] = ResolutionMatrix.blank(bandwidth=15, \
+                            nflux=self.nflux, full_range=full_range)
                 
             self.R[j].merge(spectra.R[i])
             

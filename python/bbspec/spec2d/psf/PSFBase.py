@@ -339,13 +339,14 @@ class PSFBase(object):
             for iflux in range(fluxmin, fluxmax):
                 #- Get subimage and index slices
                 xslice, yslice, pix = self.pix(ispec, iflux, xyrange=True)
-                xslice, yslice, pix = self._reslice(xslice, yslice, pix, pix_range)                
-                tmp[yslice, xslice] = pix
-            
-                #- put them into sub-region in A
-                ij = (ispec-specmin)*nflux + iflux-fluxmin
-                A[:, ij] = tmp.ravel()
-                tmp[yslice, xslice] = 0.0
+                xslice, yslice, pix = self._reslice(xslice, yslice, pix, pix_range)
+                
+                #- If there is overlap with pix_range, put into sub-region of A
+                if pix.shape[0]>0 and pix.shape[1]>0:              
+                    tmp[yslice, xslice] = pix
+                    ij = (ispec-specmin)*nflux + iflux-fluxmin
+                    A[:, ij] = tmp.ravel()
+                    tmp[yslice, xslice] = 0.0
     
         return scipy.sparse.csr_matrix(A)    
         

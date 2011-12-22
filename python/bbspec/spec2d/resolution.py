@@ -7,6 +7,7 @@ Resolution matrix class
 import numpy as N
 import scipy.sparse
 from time import time
+import sys
 
 class ResolutionMatrix(scipy.sparse.dia_matrix):
     """
@@ -71,9 +72,9 @@ class ResolutionMatrix(scipy.sparse.dia_matrix):
         self.data[:, start:start+nx] = Rx.data.copy()
 
     @staticmethod
-    def blank(bandwidth, nflux):
+    def blank(bandwidth, nflux, full_range=None, good_range=None):
         d = N.zeros((bandwidth, nflux))
-        return ResolutionMatrix(d)
+        return ResolutionMatrix(d, full_range=full_range, good_range=good_range)
   
     #--- IO methods ---
     @staticmethod
