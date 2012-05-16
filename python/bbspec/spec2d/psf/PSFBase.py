@@ -350,7 +350,7 @@ class PSFBase(object):
     
         return scipy.sparse.csr_matrix(A)    
         
-    def spec2pix(self, spectra, ispecmin=0, ifluxmin=0, xyrange=None):
+    def spec2pix(self, spectra, ispecmin=0, ifluxmin=0, xyrange=None, verbose=False):
         """
         Project spectra through psf to produce image
         
@@ -375,6 +375,7 @@ class PSFBase(object):
         #- Project spectra into the image
         image = N.zeros( (ny, nx) )
         for ispec in range(nspec):
+            if verbose: print ispec
             for iflux in range(nflux):
                 if spectra[ispec, iflux] == 0.0:
                     continue
