@@ -56,3 +56,5 @@ python/pbs/batch.py -text
 python/pbs/job.py -text
 python/pbs/server.qsub -text
 ups/bbspec.table -text
+*.fits filter=lfs diff=lfs merge=lfs -text
+*.fits.gz filter=lfs diff=lfs merge=lfs -text
