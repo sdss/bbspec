@@ -69,7 +69,7 @@ def model_arc(arcid, flatid, bStart, bEnd, indir = '.', outdir = '.'):
 	maxorder = 4	
 
 	for i_bund in range(bStart, bEnd+1):
-	    print i_bund
+	    print(i_bund)
 	    kcons = i_bund*fibBun
 	    for i_actwave in range(0, nwavelen):
 	    	# declare variables

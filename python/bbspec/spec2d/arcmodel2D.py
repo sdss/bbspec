@@ -62,7 +62,7 @@ class arcmodel2D:
         if pos<0: self.color = self.arcid[0]
         elif pos<len(self.arcid)-1: self.color = self.arcid[pos+1]
         else: self.color = None
-        if self.color!='r' and self.color!='b': print "ERROR: File name not in correct format"
+        if self.color!='r' and self.color!='b': print("ERROR: File name not in correct format")
         
         if (self.color == 'r'): 
             self.ypoints =  4128

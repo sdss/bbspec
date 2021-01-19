@@ -29,9 +29,9 @@ class ResolutionMatrix(scipy.sparse.dia_matrix):
         #- Initialize sparse matrix
         width, nflux = diagonals.shape
         if width%2 == 0:
-            raise ValueError, 'diagonals width must be odd'
+            raise ValueError('diagonals width must be odd')
             
-        offsets = range(-(width/2), (width/2)+1)
+        offsets = list(range(-(width/2), (width/2)+1))
         super(ResolutionMatrix, self).__init__((diagonals, offsets), \
                 shape=(nflux, nflux) )
 
@@ -60,12 +60,12 @@ class ResolutionMatrix(scipy.sparse.dia_matrix):
         #- Check ranges
         if self.full_range[0] > Rx.full_range[0] or \
             self.full_range[1] < Rx.full_range[1]:
-            print >> sys.stderr, self.full_range, Rx.full_range
-            raise ValueError, 'full_range of new matrix must be a subset of original'
+            print(self.full_range, Rx.full_range, file=sys.stderr)
+            raise ValueError('full_range of new matrix must be a subset of original')
 
         if self.data.shape[0] != Rx.data.shape[0]:
-            raise ValueError, "matrix bandwidths must agree (%d != %d)" % \
-                (self.data.shape[0], Rx.data.shape[0])
+            raise ValueError("matrix bandwidths must agree (%d != %d)" % \
+                (self.data.shape[0], Rx.data.shape[0]))
                 
         start = Rx.full_range[0] - self.full_range[0]
         nx = Rx.full_range[1] - Rx.full_range[0]
@@ -254,7 +254,7 @@ class ResolutionMatrixLIL(scipy.sparse.lil_matrix):
             return [ResolutionMatrixLIL.from_diagonals(d[i], **kwargs) for i in range(nR)]
         else:
             bandwidth, nflux = d.shape
-            offsets = range(-(bandwidth/2), (bandwidth/2)+1)
+            offsets = list(range(-(bandwidth/2), (bandwidth/2)+1))
             R = scipy.sparse.dia_matrix( (d, offsets), shape=(nflux,nflux) )
             return ResolutionMatrixLIL(R, **kwargs)
         
@@ -288,12 +288,12 @@ class ResolutionMatrixLIL(scipy.sparse.lil_matrix):
 
 if __name__ == '__main__':
     A = ResolutionMatrix( N.eye(50) ) 
-    print "Input dimensions:", A.shape
+    print("Input dimensions:", A.shape)
     A[0:2, 0:2] = 1
     A[3:5, 3:5] = 2
     A[10:12, 10:12] = 3
     A[0:40,20] = 5
     d = ResolutionMatrix.to_diagonals(A)
-    print "Diagonal matrix dimensions:", d.shape
+    print("Diagonal matrix dimensions:", d.shape)
     Ax = ResolutionMatrix.from_diagonals(d)
-    print "Reconstructed sparse matrix dimensions:", Ax.shape
+    print("Reconstructed sparse matrix dimensions:", Ax.shape)

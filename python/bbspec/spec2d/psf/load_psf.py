@@ -24,5 +24,5 @@ def load_psf(filename):
     elif psftype == 'PCA-PIX':
         return PSFPixelated(filename)
     else:
-        print "I don't know about PSFTYPE %s" % psftype
+        print("I don't know about PSFTYPE %s" % psftype)
         raise NotImplementedError

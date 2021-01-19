@@ -51,7 +51,7 @@ class Extractor(object):
         """
         Write the results of this extraction to filename
         """
-        print "Writing output to", filename
+        print("Writing output to", filename)
         hdus = list()
         hdus.append(pyfits.PrimaryHDU(data = self.spectra))             #- 0
         hdus.append(pyfits.ImageHDU(data = self.ivar))                  #- 1
@@ -303,7 +303,7 @@ class SubExtractor(Extractor):
         fluxmax = min(fluxmax, self._nflux)
         
         #- Setup list of input parameters for each subregion
-        print "Setting up input parameters"
+        print("Setting up input parameters")
         inputs = list()
         psf = self._psf
         for fluxlo in range(fluxmin, fluxmax, fluxstep):
@@ -343,7 +343,7 @@ class SubExtractor(Extractor):
         into parallel code without bringing along the entire data from
         a SubExtractor instance
         """
-        print boundaries
+        print(boundaries)
         
         B = boundaries   #- shorthand
         A = psf.getSparseAsub(
@@ -354,7 +354,7 @@ class SubExtractor(Extractor):
             results['boundaries'] = boundaries
         except N.linalg.LinAlgError:
             results = None
-            print "ERROR: failed extraction for", B
+            print("ERROR: failed extraction for", B)
             
         if result_queue is not None:
             result_queue.put(results)
@@ -457,9 +457,9 @@ def _solve(A, pix, ivar, boundaries=None, regularize=1e-6):
     ATA = Ax.T.dot(NiAx).toarray()
     try:
         ATAinv = N.linalg.inv(ATA)
-    except N.linalg.LinAlgError, e:
-        print >> sys.stderr, e
-        print >> sys.stderr, "ERROR: Can't invert matrix"
+    except N.linalg.LinAlgError as e:
+        print(e, file=sys.stderr)
+        print("ERROR: Can't invert matrix", file=sys.stderr)
         
         results = dict()
         results['spectra'] = N.zeros(nflux)
@@ -523,7 +523,7 @@ _t0 = None
 def _checkpoint(comment=None):
     global _t0
     if comment is not None:
-        print '%-25s : %.1f' % (comment, time() - _t0)        
+        print('%-25s : %.1f' % (comment, time() - _t0))        
     _t0 = time()
 
 

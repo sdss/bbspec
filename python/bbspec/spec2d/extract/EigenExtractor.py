@@ -131,12 +131,12 @@ def timeit(name):
     global tx
     if name == 'start':
         tx = time()
-        print '---'
+        print('---')
     if name == 'quiet_start':
         tx = time()
     else:
         t = time()
-        print '%-20s %.2f' % (name, t-tx)
+        print('%-20s %.2f' % (name, t-tx))
         tx = t
         
 def _solve(A, pix, pix_ivar, regularize=1e-3, fluxstart=None):

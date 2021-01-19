@@ -79,14 +79,14 @@ class MapServer(object):
         job = Process(target=fn_wrapper, args=xargs)
         
         if self.verbose:
-            print 'Starting job %d at %f' % (self.njobs, time()-self.t0)
+            print('Starting job %d at %f' % (self.njobs, time()-self.t0))
             
         job.start()
         self.jobs.append(job)
         self.njobs += 1
         
         if self.verbose:
-            print 'Returning job %d at %f' % (self.njobs-1, time()-self.t0)
+            print('Returning job %d at %f' % (self.njobs-1, time()-self.t0))
             
         return job
 
@@ -96,14 +96,14 @@ class MapServer(object):
         into self.results
         """
         if self.verbose:
-            print 'Trying to get a result at %f' % (time()-self.t0, )
+            print('Trying to get a result at %f' % (time()-self.t0, ))
         r = self.results_queue.get()
         ijob = r['ijob']
         if self.verbose:
-            print 'Got result %d at %f' % (ijob, time()-self.t0)
+            print('Got result %d at %f' % (ijob, time()-self.t0))
         self.results[ijob] = r
         if self.verbose:
-            print "Joining job %d at %f" % (ijob, time()-self.t0)
+            print("Joining job %d at %f" % (ijob, time()-self.t0))
             
         self.jobs[ijob].join()  #- join job to finish it off
         self.nresults += 1
@@ -125,8 +125,8 @@ def fn_wrapper(fn, results_queue, ijob, *args):
     t0 = time()
     try:
         r = fn(*args)
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
         r = None
 
     tx = time() - t0
@@ -158,4 +158,4 @@ if __name__ == '__main__':
     inputs.append((random(), 'frank') )
     inputs.append((random(), 'gary') )
     inputs.append((random(), 'ian') )
-    print xmap(test_fn, inputs, verbose=True)
+    print(xmap(test_fn, inputs, verbose=True))

@@ -55,7 +55,7 @@ class PSFGauss2D(PSFBase):
         #- Convert into grid of points to evaluate
         dx = N.arange(xmin, xmax+1) - x0
         dy = N.arange(ymin, ymax+1) - y0        
-        dxx, dyy = map(N.ravel, N.meshgrid(dx, dy))
+        dxx, dyy = list(map(N.ravel, N.meshgrid(dx, dy)))
 
         #- Rotated Gaussian, formulas from
         #- http://en.wikipedia.org/wiki/Gaussian_function

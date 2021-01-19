@@ -41,7 +41,7 @@ class PSFPixelated(PSFBase):
         
         #- check if X and Y are swapped
         if max(self.param['X'][0]) - min(self.param['X'][0]) > 2000:
-            print 'swapping X and Y'
+            print('swapping X and Y')
             self.param['X'] = fx[1].data
             self.param['Y'] = fx[0].data
         

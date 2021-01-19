@@ -68,7 +68,7 @@ class PSFBase(object):
         """
         specmin, specmax = spec_range
         fluxmin, fluxmax = flux_range
-        iiflux = range(fluxmin, fluxmax)
+        iiflux = list(range(fluxmin, fluxmax))
 
         def minmax(t):
             return t.min(), t.max()
@@ -84,7 +84,7 @@ class PSFBase(object):
         ymax = min(ymax+dy, self.npix_y)
         
         #+ Make them integers (could round instead of truncate...)
-        xypix = map(int, (xmin, xmax, ymin, ymax))
+        xypix = list(map(int, (xmin, xmax, ymin, ymax)))
         
         return xypix
 
@@ -106,7 +106,7 @@ class PSFBase(object):
             
         #- Resample parameters to this new grid
         self.nflux = loglam.size
-        keys = self.param.keys()  #- Cache because loop modifies self.param
+        keys = list(self.param.keys())  #- Cache because loop modifies self.param
         for param in keys:
             #- Some PSF subclasses may keep parameters of other shapes; skip
             if self.param[param].shape != orig_loglam.shape:
@@ -159,7 +159,7 @@ class PSFBase(object):
             elif iflux.ndim == 2:
                 return iflux
             else:
-                raise ValueError, "iflux must be 1D or 2D array"
+                raise ValueError("iflux must be 1D or 2D array")
                 
         #- Otherwise, interpolate loglam or y to iflux array
         elif loglam is not None:
@@ -169,7 +169,7 @@ class PSFBase(object):
             param = "Y"
             xx = y
         else:
-            raise ValueError, "iflux, loglam, or y required"
+            raise ValueError("iflux, loglam, or y required")
             
         result = list()
         xp = self.param[param]
@@ -181,7 +181,7 @@ class PSFBase(object):
             for ispec in range(self.nspec):
                 result.append(N.interp(xx[ispec], xp[ispec], self._iflux))
         else:
-            raise ValueError, "loglam/y input must be 1D or 2D array"
+            raise ValueError("loglam/y input must be 1D or 2D array")
 
         return N.array(result)
 
@@ -375,7 +375,7 @@ class PSFBase(object):
         #- Project spectra into the image
         image = N.zeros( (ny, nx) )
         for ispec in range(nspec):
-            if verbose: print ispec
+            if verbose: print(ispec)
             for iflux in range(nflux):
                 if spectra[ispec, iflux] == 0.0:
                     continue

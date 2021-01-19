@@ -44,7 +44,7 @@ class BaseExtractor(object):
         """
         Write the results of this extraction to filename
         """
-        print "Writing output to", filename
+        print("Writing output to", filename)
         hdus = list()
         hdus.append(pyfits.PrimaryHDU(data = self.spectra))             #- 0
         hdus.append(pyfits.ImageHDU(data = self.ivar))                  #- 1
